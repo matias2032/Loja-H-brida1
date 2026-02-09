@@ -24,3 +24,4 @@ plugins {
 }
 
 include(":app")
+rootProject.name = "vendedor_android"
