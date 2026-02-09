@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'screens/gerenciar_usuarios.dart';
+import 'screens/detalhes_usuario.dart';
 
 void main() {
   runApp(const MyApp());
@@ -27,14 +28,36 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       themeMode: ThemeMode.system,
+      
       // Abre diretamente a tela de gerenciar usuários
       home: const UsuarioListScreen(),
-      // Rotas nomeadas para navegação
-      routes: {
-        '/gerenciar_usuarios': (context) => const UsuarioListScreen(),
-        // Adicione outras rotas conforme necessário:
-        // '/cadastro_usuario': (context) => const CadastroUsuarioScreen(),
-        // '/detalhes_usuario': (context) => const DetalhesUsuarioScreen(),
+      
+      // Rotas nomeadas
+      onGenerateRoute: (settings) {
+        // Rota para detalhes do usuário (recebe ID como argumento)
+        if (settings.name == '/detalhes_usuario') {
+          final usuarioId = settings.arguments as int;
+          return MaterialPageRoute(
+            builder: (context) => DetalhesUsuarioScreen(usuarioId: usuarioId),
+          );
+        }
+        
+        // Outras rotas
+        switch (settings.name) {
+          case '/gerenciar_usuarios':
+            return MaterialPageRoute(
+              builder: (context) => const UsuarioListScreen(),
+            );
+          // Adicione outras rotas conforme necessário:
+          // case '/cadastro_usuario':
+          //   return MaterialPageRoute(
+          //     builder: (context) => const CadastroUsuarioScreen(),
+          //   );
+          default:
+            return MaterialPageRoute(
+              builder: (context) => const UsuarioListScreen(),
+            );
+        }
       },
     );
   }
