@@ -53,6 +53,12 @@ class ApiConfig {
   static const String perfis = '/api/perfis';
   static const String provincias = '/api/provincias';
   static const String cidades = '/api/cidades';
+  static const String categorias = '/api/categorias';
+  static const String marcas = '/api/marcas';
+  static const String pedidos = '/api/pedidos';
+  static const String produtos = '/api/produtos';
+  static const String carrinhos = '/api/carrinhos';
+  
   
   // URLs completas
   static String get usuariosUrl => '$baseUrl$usuarios';
@@ -60,6 +66,11 @@ class ApiConfig {
   static String get perfisUrl => '$baseUrl$perfis';
   static String get provinciasUrl => '$baseUrl$provincias';
   static String get cidadesUrl => '$baseUrl$cidades';
+  static String get categoriasUrl => '$baseUrl$categorias';
+  static String get marcasUrl => '$baseUrl$marcas';
+  static String get pedidosUrl => '$baseUrl$pedidos';
+  static String get produtosUrl => '$baseUrl$produtos';
+  static String get carrinhosUrl => '$baseUrl$carrinhos';
   
   // =================================================================
   // ⚙️ CONFIGURAÇÕES ADICIONAIS

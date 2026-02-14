@@ -1,8 +1,8 @@
 // lib/main.dart
-
 import 'package:flutter/material.dart';
 import 'screens/gerenciar_usuarios.dart';
 import 'screens/detalhes_usuario.dart';
+import 'screens/categorias_list_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -29,8 +29,8 @@ class MyApp extends StatelessWidget {
       ),
       themeMode: ThemeMode.system,
       
-      // Abre diretamente a tela de gerenciar usuários
-      home: const UsuarioListScreen(),
+      // ✅ Abre diretamente a tela de CATEGORIAS
+      home: const CategoriasListScreen(),
       
       // Rotas nomeadas
       onGenerateRoute: (settings) {
@@ -48,14 +48,21 @@ class MyApp extends StatelessWidget {
             return MaterialPageRoute(
               builder: (context) => const UsuarioListScreen(),
             );
+          
+          case '/categorias':
+            return MaterialPageRoute(
+              builder: (context) => const CategoriasListScreen(),
+            );
+          
           // Adicione outras rotas conforme necessário:
           // case '/cadastro_usuario':
           //   return MaterialPageRoute(
           //     builder: (context) => const CadastroUsuarioScreen(),
           //   );
+          
           default:
             return MaterialPageRoute(
-              builder: (context) => const UsuarioListScreen(),
+              builder: (context) => const CategoriasListScreen(),
             );
         }
       },
