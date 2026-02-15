@@ -1,84 +1,60 @@
-// lib/screens/categoria/categorias_list_screen.dart
+// lib/screens/marcas_list_screen.dart
 
 import 'package:flutter/material.dart';
-import '../../models/categoria_model.dart';
 import '../../models/marca_model.dart';
-import '../../services/categoria_service.dart';
+import '../../models/categoria_model.dart';
 import '../../services/marca_service.dart';
-import 'categoria_form_screen.dart';
+import '../../services/categoria_service.dart';
+import 'marca_form_screen.dart';
 
-class CategoriasListScreen extends StatefulWidget {
-  const CategoriasListScreen({Key? key}) : super(key: key);
+class MarcasListScreen extends StatefulWidget {
+  const MarcasListScreen({Key? key}) : super(key: key);
 
   @override
-  State<CategoriasListScreen> createState() => _CategoriasListScreenState();
+  State<MarcasListScreen> createState() => _MarcasListScreenState();
 }
 
-class _CategoriasListScreenState extends State<CategoriasListScreen> {
-  final CategoriaService _categoriaService = CategoriaService();
+class _MarcasListScreenState extends State<MarcasListScreen> {
   final MarcaService _marcaService = MarcaService();
+  final CategoriaService _categoriaService = CategoriaService();
   
-  List<Categoria> _categorias = [];
-  Map<int, List<Marca>> _marcasPorCategoria = {}; // Cache de marcas
+  List<Marca> _marcas = [];
+  Map<int, List<Categoria>> _categoriasPorMarca = {};
   bool _isLoading = false;
   String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _carregarCategorias();
+    _carregarMarcas();
   }
 
-  Future<void> _carregarCategorias() async {
+  
+Future<void> _carregarMarcas() async {
+  setState(() {
+    _isLoading = true;
+    _errorMessage = null;
+  });
+
+  try {
+    // Agora usa o endpoint que já traz as categorias
+    final marcas = await _marcaService.listarMarcasComCategorias();
+    
     setState(() {
-      _isLoading = true;
-      _errorMessage = null;
+      _marcas = marcas;
+      _isLoading = false;
     });
-
-    try {
-      final categorias = await _categoriaService.listarCategorias();
-      setState(() {
-        _categorias = categorias;
-        _isLoading = false;
-      });
-      
-      // Carregar marcas de cada categoria
-      _carregarMarcasDeTodasCategorias();
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Erro ao carregar categorias: $e';
-        _isLoading = false;
-      });
-    }
+  } catch (e) {
+    setState(() {
+      _errorMessage = 'Erro ao carregar marcas: $e';
+      _isLoading = false;
+    });
   }
+}
 
-  Future<void> _carregarMarcasDeTodasCategorias() async {
-    try {
-      final todasMarcas = await _marcaService.listarMarcas();
-      
-      for (var categoria in _categorias) {
-        if (categoria.idCategoria != null) {
-          // Busca IDs das marcas associadas à categoria
-          final marcasIds = await _categoriaService
-              .listarMarcasDaCategoria(categoria.idCategoria!);
-          
-          // Filtra as marcas associadas
-          final marcasAssociadas = todasMarcas
-              .where((marca) => marcasIds.contains(marca.idMarca))
-              .toList();
-          
-          setState(() {
-            _marcasPorCategoria[categoria.idCategoria!] = marcasAssociadas;
-          });
-        }
-      }
-    } catch (e) {
-      print('Erro ao carregar marcas: $e');
-    }
-  }
 
-  Future<void> _deletarCategoria(Categoria categoria) async {
-    final marcas = _marcasPorCategoria[categoria.idCategoria] ?? [];
+  Future<void> _deletarMarca(Marca marca) async {
+     final categorias = marca.categorias ?? []; // SIMPLIFICADO
     
     final confirmar = await showDialog<bool>(
       context: context,
@@ -89,7 +65,7 @@ class _CategoriasListScreenState extends State<CategoriasListScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Deseja realmente excluir a categoria "${categoria.nomeCategoria}"?',
+              'Deseja realmente excluir a marca "${marca.nomeMarca}"?',
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
@@ -106,9 +82,9 @@ class _CategoriasListScreenState extends State<CategoriasListScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      marcas.isEmpty
-                          ? 'Esta categoria não está associada a nenhuma marca.'
-                          : 'As ${marcas.length} marca(s) associada(s) e os produtos NÃO serão excluídos.',
+                      categorias.isEmpty
+                          ? 'Esta marca não está associada a nenhuma categoria.'
+                          : 'As ${categorias.length} categoria(s) associada(s) NÃO serão excluídas.',
                       style: TextStyle(
                         fontSize: 13,
                         color: Colors.orange[900],
@@ -136,18 +112,18 @@ class _CategoriasListScreenState extends State<CategoriasListScreen> {
       ),
     );
 
-    if (confirmar == true && categoria.idCategoria != null) {
+    if (confirmar == true && marca.idMarca != null) {
       try {
-        await _categoriaService.deletarCategoria(categoria.idCategoria!);
+        await _marcaService.deletarMarca(marca.idMarca!);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Categoria "${categoria.nomeCategoria}" excluída'),
+              content: Text('Marca "${marca.nomeMarca}" excluída'),
               backgroundColor: Colors.green,
             ),
           );
-          _carregarCategorias();
+          _carregarMarcas();
         }
       } catch (e) {
         if (mounted) {
@@ -162,16 +138,16 @@ class _CategoriasListScreenState extends State<CategoriasListScreen> {
     }
   }
 
-  void _navegarParaFormulario({Categoria? categoria}) async {
+  void _navegarParaFormulario({Marca? marca}) async {
     final resultado = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => CategoriaFormScreen(categoria: categoria),
+        builder: (context) => MarcaFormScreen(marca: marca),
       ),
     );
 
     if (resultado == true) {
-      _carregarCategorias();
+      _carregarMarcas();
     }
   }
 
@@ -179,11 +155,11 @@ class _CategoriasListScreenState extends State<CategoriasListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Categorias'),
+        title: const Text('Marcas'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _carregarCategorias,
+            onPressed: _carregarMarcas,
             tooltip: 'Atualizar',
           ),
         ],
@@ -192,7 +168,7 @@ class _CategoriasListScreenState extends State<CategoriasListScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _navegarParaFormulario(),
         icon: const Icon(Icons.add),
-        label: const Text('Nova Categoria'),
+        label: const Text('Nova Marca'),
       ),
     );
   }
@@ -214,7 +190,7 @@ class _CategoriasListScreenState extends State<CategoriasListScreen> {
             Text(_errorMessage!, textAlign: TextAlign.center),
             const SizedBox(height: 16),
             ElevatedButton.icon(
-              onPressed: _carregarCategorias,
+              onPressed: _carregarMarcas,
               icon: const Icon(Icons.refresh),
               label: const Text('Tentar Novamente'),
             ),
@@ -223,15 +199,15 @@ class _CategoriasListScreenState extends State<CategoriasListScreen> {
       );
     }
 
-    if (_categorias.isEmpty) {
+    if (_marcas.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.category_outlined, size: 64, color: Colors.grey[400]),
+            Icon(Icons.label_off_outlined, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
-              'Nenhuma categoria cadastrada',
+              'Nenhuma marca cadastrada',
               style: TextStyle(fontSize: 16, color: Colors.grey[600]),
             ),
             const SizedBox(height: 8),
@@ -245,29 +221,29 @@ class _CategoriasListScreenState extends State<CategoriasListScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: _carregarCategorias,
+      onRefresh: _carregarMarcas,
       child: ListView.builder(
         padding: const EdgeInsets.all(8),
-        itemCount: _categorias.length,
+        itemCount: _marcas.length,
         itemBuilder: (context, index) {
-          final categoria = _categorias[index];
-          return _buildCategoriaCard(categoria);
+          final marca = _marcas[index];
+          return _buildMarcaCard(marca);
         },
       ),
     );
   }
 
-  Widget _buildCategoriaCard(Categoria categoria) {
-    final marcas = _marcasPorCategoria[categoria.idCategoria] ?? [];
+Widget _buildMarcaCard(Marca marca) {
+  final categorias = marca.categorias ?? []; // SIMPLIFICADO
 
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-      elevation: 2,
-      child: ExpansionTile(
+  return Card(
+    margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+    elevation: 2,
+    child: ExpansionTile(
         leading: CircleAvatar(
           backgroundColor: Theme.of(context).primaryColor,
           child: Text(
-            categoria.nomeCategoria[0].toUpperCase(),
+            marca.nomeMarca[0].toUpperCase(),
             style: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
@@ -275,66 +251,43 @@ class _CategoriasListScreenState extends State<CategoriasListScreen> {
           ),
         ),
         title: Text(
-          categoria.nomeCategoria,
+          marca.nomeMarca,
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (categoria.descricao != null && categoria.descricao!.isNotEmpty)
-              Text(
-                categoria.descricao!,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 13),
-              )
-            else
-              const Text(
-                'Sem descrição',
-                style: TextStyle(
-                  fontStyle: FontStyle.italic,
-                  color: Colors.grey,
-                  fontSize: 13,
-                ),
-              ),
-            const SizedBox(height: 4),
-            Text(
-              marcas.isEmpty
-                  ? 'Nenhuma marca associada'
-                  : '${marcas.length} marca(s) associada(s)',
-              style: TextStyle(
-                color: marcas.isEmpty ? Colors.grey : Colors.orange[700],
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
+        subtitle: Text(
+          categorias.isEmpty
+              ? 'Nenhuma categoria associada'
+              : '${categorias.length} categoria(s) associada(s)',
+          style: TextStyle(
+            color: categorias.isEmpty ? Colors.grey : Colors.blue[700],
+            fontSize: 13,
+          ),
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
               icon: const Icon(Icons.edit, color: Colors.blue),
-              onPressed: () => _navegarParaFormulario(categoria: categoria),
+              onPressed: () => _navegarParaFormulario(marca: marca),
               tooltip: 'Editar',
             ),
             IconButton(
               icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () => _deletarCategoria(categoria),
+              onPressed: () => _deletarMarca(marca),
               tooltip: 'Excluir',
             ),
           ],
         ),
         children: [
-          if (marcas.isEmpty)
+          if (categorias.isEmpty)
             Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  Icon(Icons.label_off_outlined, size: 48, color: Colors.grey[400]),
+                  Icon(Icons.category_outlined, size: 48, color: Colors.grey[400]),
                   const SizedBox(height: 8),
                   Text(
-                    'Esta categoria ainda não está associada a nenhuma marca',
+                    'Esta marca ainda não está associada a nenhuma categoria',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontStyle: FontStyle.italic,
@@ -343,9 +296,9 @@ class _CategoriasListScreenState extends State<CategoriasListScreen> {
                   ),
                   const SizedBox(height: 8),
                   TextButton.icon(
-                    onPressed: () => _navegarParaFormulario(categoria: categoria),
+                    onPressed: () => _navegarParaFormulario(marca: marca),
                     icon: const Icon(Icons.add),
-                    label: const Text('Associar Marcas'),
+                    label: const Text('Associar Categorias'),
                   ),
                 ],
               ),
@@ -358,10 +311,10 @@ class _CategoriasListScreenState extends State<CategoriasListScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.label, size: 20, color: Colors.orange[700]),
+                      Icon(Icons.category, size: 20, color: Colors.blue[700]),
                       const SizedBox(width: 8),
                       const Text(
-                        'Marcas Associadas:',
+                        'Categorias Associadas:',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
@@ -373,20 +326,20 @@ class _CategoriasListScreenState extends State<CategoriasListScreen> {
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: marcas.map((marca) {
+                    children: categorias.map((categoria) {
                       return Chip(
                         avatar: CircleAvatar(
-                          backgroundColor: Colors.orange,
+                          backgroundColor: Colors.blue,
                           child: Text(
-                            marca.nomeMarca[0].toUpperCase(),
+                            categoria.nomeCategoria[0].toUpperCase(),
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 12,
                             ),
                           ),
                         ),
-                        label: Text(marca.nomeMarca),
-                        backgroundColor: Colors.orange[50],
+                        label: Text(categoria.nomeCategoria),
+                        backgroundColor: Colors.blue[50],
                       );
                     }).toList(),
                   ),

@@ -1,5 +1,6 @@
 package com.loja1.projectohibrido.marca.controller;
 
+import com.loja1.projectohibrido.marca.dto.MarcaComCategoriasDTO;
 import com.loja1.projectohibrido.marca.dto.MarcaRequestDTO;
 import com.loja1.projectohibrido.marca.dto.MarcaResponseDTO;
 import com.loja1.projectohibrido.marca.service.MarcaService;
@@ -31,6 +32,14 @@ public class MarcaController {
     public ResponseEntity<List<MarcaResponseDTO>> listar() {
         log.info("GET /api/marcas - Listar todas as marcas");
         List<MarcaResponseDTO> marcas = marcaService.listar();
+        return ResponseEntity.ok(marcas);
+    }
+    
+    // ===== NOVO ENDPOINT - LISTAR COM CATEGORIAS =====
+    @GetMapping("/com-categorias")
+    public ResponseEntity<List<MarcaComCategoriasDTO>> listarComCategorias() {
+        log.info("GET /api/marcas/com-categorias - Listar marcas com categorias");
+        List<MarcaComCategoriasDTO> marcas = marcaService.listarComCategorias();
         return ResponseEntity.ok(marcas);
     }
     

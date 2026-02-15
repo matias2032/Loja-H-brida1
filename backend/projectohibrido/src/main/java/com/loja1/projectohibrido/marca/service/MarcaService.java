@@ -1,5 +1,10 @@
 package com.loja1.projectohibrido.marca.service;
 
+import com.loja1.projectohibrido.categoria.entity.CategoriaMarca;
+import com.loja1.projectohibrido.categoria.repository.CategoriaMarcaRepository;
+import com.loja1.projectohibrido.categoria.repository.CategoriaRepository;
+import com.loja1.projectohibrido.marca.dto.CategoriaSimplificadaDTO;
+import com.loja1.projectohibrido.marca.dto.MarcaComCategoriasDTO;
 import com.loja1.projectohibrido.marca.dto.MarcaRequestDTO;
 import com.loja1.projectohibrido.marca.dto.MarcaResponseDTO;
 import com.loja1.projectohibrido.marca.entity.Marca;
@@ -18,6 +23,8 @@ import java.util.stream.Collectors;
 public class MarcaService {
     
     private final MarcaRepository marcaRepository;
+    private final CategoriaMarcaRepository categoriaMarcaRepository;
+    private final CategoriaRepository categoriaRepository;
     
     // ===== CRUD BÁSICO =====
     
@@ -75,6 +82,40 @@ public class MarcaService {
         Marca marca = marcaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Marca não encontrada com ID: " + id));
         return mapToResponseDTO(marca);
+    }
+    
+    // ===== NOVO MÉTODO - LISTAR MARCAS COM CATEGORIAS =====
+    
+    @Transactional(readOnly = true)
+    public List<MarcaComCategoriasDTO> listarComCategorias() {
+        log.info("Listando todas as marcas com categorias");
+        
+        List<Marca> marcas = marcaRepository.findAll();
+        
+        return marcas.stream().map(marca -> {
+            // Busca as associações da marca
+            List<CategoriaMarca> associacoes = 
+                categoriaMarcaRepository.findByIdMarca(marca.getIdMarca());
+            
+            // Busca as categorias completas
+            List<CategoriaSimplificadaDTO> categorias = associacoes.stream()
+                .map(associacao -> {
+                    return categoriaRepository.findById(associacao.getIdCategoria())
+                        .map(cat -> new CategoriaSimplificadaDTO(
+                            cat.getIdCategoria(),
+                            cat.getNomeCategoria()
+                        ))
+                        .orElse(null);
+                })
+                .filter(cat -> cat != null)
+                .collect(Collectors.toList());
+            
+            return new MarcaComCategoriasDTO(
+                marca.getIdMarca(),
+                marca.getNomeMarca(),
+                categorias
+            );
+        }).collect(Collectors.toList());
     }
     
     // ===== MÉTODOS AUXILIARES =====
