@@ -1,14 +1,14 @@
 // lib/main.dart
-
 import 'package:flutter/material.dart';
-
-// Importações de Telas
 import 'screens/gerenciar_usuarios.dart';
 import 'screens/detalhes_usuario.dart';
 import 'screens/categorias_list_screen.dart';
 import 'screens/categoria_form_screen.dart';
 import 'screens/marcas_list_screen.dart';
 import 'screens/marca_form_screen.dart';
+import 'screens/produto_form_screen.dart';
+import 'screens/produto_list_screen.dart';
+
 
 void main() {
   runApp(const MyApp());
@@ -70,6 +70,13 @@ class MyApp extends StatelessWidget {
             return MaterialPageRoute(
               builder: (context) => const MarcasListScreen(),
             );
+
+            // PRODUTOS
+case '/produtos':
+  return MaterialPageRoute(
+    builder: (context) => const ProdutoListScreen(),
+  );
+
           
           // HOME
           case '/home':
