@@ -5,6 +5,7 @@ import '../models/categoria_model.dart';
 import '../services/produto_service.dart';
 import '../services/marca_service.dart';
 import '../services/categoria_service.dart';
+import '../config/api_config.dart'; // ✅ ADICIONE este import
 import 'produto_form_screen.dart';
 
 class ProdutoListScreen extends StatefulWidget {
@@ -19,9 +20,9 @@ class _ProdutoListScreenState extends State<ProdutoListScreen> {
   final MarcaService _marcaService = MarcaService();
   final CategoriaService _categoriaService = CategoriaService();
 
-  List<Produto> _produtos = []; // ✅ MUDANÇA: ProdutoModel → Produto
-  List<Marca> _marcas = []; // ✅ MUDANÇA: MarcaModel → Marca
-  List<Categoria> _categorias = []; // ✅ MUDANÇA: CategoriaModel → Categoria
+  List<Produto> _produtos = [];
+  List<Marca> _marcas = [];
+  List<Categoria> _categorias = [];
   
   bool _isLoading = true;
   String? _errorMessage;
@@ -40,7 +41,7 @@ class _ProdutoListScreenState extends State<ProdutoListScreen> {
 
     try {
       final produtos = await _produtoService.listarProdutos();
-      final marcas = await _marcaService.listarMarcasComCategorias(); // ✅ MUDANÇA: usar método com categorias
+      final marcas = await _marcaService.listarMarcasComCategorias();
       final categorias = await _categoriaService.listarCategorias();
 
       setState(() {
@@ -63,7 +64,7 @@ class _ProdutoListScreenState extends State<ProdutoListScreen> {
     final nomes = idsMarcas
         .map((id) => _marcas.firstWhere(
               (m) => m.idMarca == id,
-              orElse: () => Marca(idMarca: id, nomeMarca: 'Desconhecida'), // ✅ MUDANÇA
+              orElse: () => Marca(idMarca: id, nomeMarca: 'Desconhecida'),
             ).nomeMarca)
         .join(', ');
     
@@ -76,14 +77,14 @@ class _ProdutoListScreenState extends State<ProdutoListScreen> {
     final nomes = idsCategorias
         .map((id) => _categorias.firstWhere(
               (c) => c.idCategoria == id,
-              orElse: () => Categoria(idCategoria: id, nomeCategoria: 'Desconhecida'), // ✅ MUDANÇA
+              orElse: () => Categoria(idCategoria: id, nomeCategoria: 'Desconhecida'),
             ).nomeCategoria)
         .join(', ');
     
     return nomes.isEmpty ? 'Sem categoria' : nomes;
   }
 
-  Future<void> _toggleAtivo(Produto produto) async { // ✅ MUDANÇA: ProdutoModel → Produto
+  Future<void> _toggleAtivo(Produto produto) async {
     try {
       await _produtoService.toggleAtivo(produto.idProduto!);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -124,7 +125,7 @@ class _ProdutoListScreenState extends State<ProdutoListScreen> {
           final result = await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => const ProdutoFormScreen(), // ✅ MUDANÇA: remover parâmetros (screen carrega os dados internamente)
+              builder: (context) => const ProdutoFormScreen(),
             ),
           );
           if (result == true) _carregarDados();
@@ -174,7 +175,7 @@ class _ProdutoListScreenState extends State<ProdutoListScreen> {
     );
   }
 
-  Widget _buildProdutoCard(Produto produto) { // ✅ MUDANÇA: ProdutoModel → Produto
+  Widget _buildProdutoCard(Produto produto) {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
       elevation: 2,
@@ -184,7 +185,7 @@ class _ProdutoListScreenState extends State<ProdutoListScreen> {
             context,
             MaterialPageRoute(
               builder: (context) => ProdutoFormScreen(
-                produto: produto, // ✅ MUDANÇA: só passar o produto
+                produto: produto,
               ),
             ),
           );
@@ -195,20 +196,10 @@ class _ProdutoListScreenState extends State<ProdutoListScreen> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Imagem do produto
+              // ✅ IMAGEM DO PRODUTO - ATUALIZADA
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: produto.imagemPrincipalUrl != null
-                    ? Image.network(
-                        produto.imagemPrincipalUrl!,
-                        width: 80,
-                        height: 80,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return _buildPlaceholderImage();
-                        },
-                      )
-                    : _buildPlaceholderImage(),
+                child: _buildProdutoImagem(produto),
               ),
               const SizedBox(width: 12),
               
@@ -260,17 +251,66 @@ class _ProdutoListScreenState extends State<ProdutoListScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'R\$ ${produto.preco.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green,
-                          ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (produto.precoPromocional != null) ...[
+                              Text(
+                                'R\$ ${produto.preco.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  decoration: TextDecoration.lineThrough,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              Text(
+                                'R\$ ${produto.precoPromocional!.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.red,
+                                ),
+                              ),
+                            ] else
+                              Text(
+                                'R\$ ${produto.preco.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green,
+                                ),
+                              ),
+                          ],
                         ),
-                        Text(
-                          'Estoque: ${produto.quantidadeEstoque}',
-                          style: const TextStyle(fontSize: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: produto.quantidadeEstoque > 10 
+                                ? Colors.green[50] 
+                                : produto.quantidadeEstoque > 0 
+                                    ? Colors.orange[50]
+                                    : Colors.red[50],
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: produto.quantidadeEstoque > 10 
+                                  ? Colors.green 
+                                  : produto.quantidadeEstoque > 0 
+                                      ? Colors.orange
+                                      : Colors.red,
+                            ),
+                          ),
+                          child: Text(
+                            'Estoque: ${produto.quantidadeEstoque}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: produto.quantidadeEstoque > 10 
+                                  ? Colors.green[700] 
+                                  : produto.quantidadeEstoque > 0 
+                                      ? Colors.orange[700]
+                                      : Colors.red[700],
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -305,12 +345,66 @@ class _ProdutoListScreenState extends State<ProdutoListScreen> {
     );
   }
 
+  // ✅ NOVO MÉTODO PARA CONSTRUIR A IMAGEM
+  Widget _buildProdutoImagem(Produto produto) {
+    // Se não tem imagem, mostrar placeholder
+    if (produto.imagemPrincipalUrl == null || produto.imagemPrincipalUrl!.isEmpty) {
+      return _buildPlaceholderImage();
+    }
+
+    // Construir URL completa
+    final String urlCompleta = '${ApiConfig.baseUrl}${produto.imagemPrincipalUrl}';
+    
+    print('🖼️ Tentando carregar imagem: $urlCompleta'); // Debug
+
+    return Image.network(
+      urlCompleta,
+      width: 80,
+      height: 80,
+      fit: BoxFit.cover,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Container(
+          width: 80,
+          height: 80,
+          color: Colors.grey[200],
+          child: Center(
+            child: CircularProgressIndicator(
+              value: loadingProgress.expectedTotalBytes != null
+                  ? loadingProgress.cumulativeBytesLoaded / 
+                    loadingProgress.expectedTotalBytes!
+                  : null,
+              strokeWidth: 2,
+            ),
+          ),
+        );
+      },
+      errorBuilder: (context, error, stackTrace) {
+        print('❌ Erro ao carregar imagem: $error'); // Debug
+        return _buildPlaceholderImage();
+      },
+    );
+  }
+
   Widget _buildPlaceholderImage() {
     return Container(
       width: 80,
       height: 80,
-      color: Colors.grey[300],
-      child: const Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
+      decoration: BoxDecoration(
+        color: Colors.grey[300],
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.image_not_supported, size: 32, color: Colors.grey[600]),
+          const SizedBox(height: 4),
+          Text(
+            'Sem imagem',
+            style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+          ),
+        ],
+      ),
     );
   }
 }

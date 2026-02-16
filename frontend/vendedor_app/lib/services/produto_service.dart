@@ -2,6 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../models/produto_model.dart';
+import 'dart:io';
+import 'package:http_parser/http_parser.dart';
+import '../models/produto_imagem_model.dart';
+
 
 class ProdutoService {
   // ===== LISTAR TODOS OS PRODUTOS =====
@@ -92,31 +96,42 @@ class ProdutoService {
     }
   }
 
-  // ===== ATUALIZAR PRODUTO =====
-  Future<Produto> atualizarProduto(int id, Produto produto) async {
-    try {
-      final response = await http
-          .put(
-            Uri.parse('${ApiConfig.produtosUrl}/$id'),
-            headers: ApiConfig.defaultHeaders,
-            body: json.encode(produto.toJsonCreate()),
-          )
-          .timeout(ApiConfig.timeout);
+// ===== ATUALIZAR PRODUTO =====
+Future<Produto> atualizarProduto(int id, Produto produto) async {
+  try {
+    final body = produto.toJsonUpdate(); // ✅ USAR ESTE MÉTODO
+    
+    print('========================================');
+    print('🔍 ATUALIZANDO PRODUTO ID: $id');
+    print('📤 Dados que serão enviados:');
+    print('   JSON completo: ${json.encode(body)}');
+    print('========================================');
+    
+    final response = await http.put(
+      Uri.parse('${ApiConfig.produtosUrl}/$id'),
+      headers: ApiConfig.defaultHeaders,
+      body: json.encode(body),
+    ).timeout(ApiConfig.timeout);
 
-      if (response.statusCode == 200) {
-        print('✅ Produto atualizado com sucesso');
-        return Produto.fromJson(json.decode(utf8.decode(response.bodyBytes)));
-      } else {
-        throw Exception('Erro ao atualizar produto: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('❌ Erro no atualizarProduto: $e');
-      rethrow;
+
+    print('📥 RESPOSTA:');
+    print('   - Status: ${response.statusCode}');
+    print('   - Body: ${response.body}');
+    print('========================================');
+
+    if (response.statusCode == 200) {
+      print('✅ Produto atualizado com sucesso');
+      return Produto.fromJson(json.decode(utf8.decode(response.bodyBytes)));
+    } else {
+      throw Exception('Erro ao atualizar produto: ${response.statusCode}');
     }
+  } catch (e) {
+    print('❌ Erro no atualizarProduto: $e');
+    rethrow;
   }
 
-  // ===== TOGGLE ATIVO/INATIVO =====
-  Future<void> toggleAtivo(int id) async {
+}
+Future<void> toggleAtivo(int id) async {
     try {
       final response = await http
           .patch(
@@ -153,6 +168,114 @@ class ProdutoService {
       }
     } catch (e) {
       print('❌ Erro no associarCategoria: $e');
+      rethrow;
+    }
+  }
+
+// lib/services/produto_service.dart
+// ✅ ADICIONAR estes métodos na classe ProdutoService:
+
+  // ===== ADICIONAR IMAGEM =====
+  Future<void> adicionarImagem({
+    required int idProduto,
+    required File imagemFile,
+    String? legenda,
+    bool imagemPrincipal = false,
+  }) async {
+    try {
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${ApiConfig.produtosUrl}/$idProduto/imagens'),
+      );
+
+      // Adicionar a imagem
+      var imagem = await http.MultipartFile.fromPath(
+        'imagem',
+        imagemFile.path,
+        contentType: MediaType('image', 'jpeg'),
+      );
+      request.files.add(imagem);
+
+      // Adicionar campos
+      if (legenda != null && legenda.isNotEmpty) {
+        request.fields['legenda'] = legenda;
+      }
+      request.fields['imagemPrincipal'] = imagemPrincipal ? '1' : '0';
+
+      final streamedResponse = await request.send().timeout(ApiConfig.timeout);
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        print('✅ Imagem adicionada com sucesso');
+      } else {
+        throw Exception('Erro ao adicionar imagem: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Erro no adicionarImagem: $e');
+      rethrow;
+    }
+  }
+
+  // ===== LISTAR IMAGENS DO PRODUTO =====
+  Future<List<ProdutoImagem>> listarImagensDoProduto(int idProduto) async {
+    try {
+      final response = await http
+          .get(
+            Uri.parse('${ApiConfig.produtosUrl}/$idProduto/imagens'),
+            headers: ApiConfig.defaultHeaders,
+          )
+          .timeout(ApiConfig.timeout);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(utf8.decode(response.bodyBytes));
+        return data.map((json) => ProdutoImagem.fromJson(json)).toList();
+      } else {
+        throw Exception('Erro ao buscar imagens: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Erro no listarImagensDoProduto: $e');
+      rethrow;
+    }
+  }
+
+  // ===== DEFINIR IMAGEM PRINCIPAL =====
+  Future<void> definirImagemPrincipal(int idProduto, int idImagem) async {
+    try {
+      final response = await http
+          .patch(
+            Uri.parse('${ApiConfig.produtosUrl}/$idProduto/imagens/$idImagem/principal'),
+            headers: ApiConfig.defaultHeaders,
+          )
+          .timeout(ApiConfig.timeout);
+
+      if (response.statusCode == 204 || response.statusCode == 200) {
+        print('✅ Imagem principal definida');
+      } else {
+        throw Exception('Erro ao definir imagem principal: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Erro no definirImagemPrincipal: $e');
+      rethrow;
+    }
+  }
+
+  // ===== REMOVER IMAGEM =====
+  Future<void> removerImagem(int idImagem) async {
+    try {
+      final response = await http
+          .delete(
+            Uri.parse('${ApiConfig.produtosUrl}/imagens/$idImagem'),
+            headers: ApiConfig.defaultHeaders,
+          )
+          .timeout(ApiConfig.timeout);
+
+      if (response.statusCode == 204 || response.statusCode == 200) {
+        print('✅ Imagem removida com sucesso');
+      } else {
+        throw Exception('Erro ao remover imagem: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Erro no removerImagem: $e');
       rethrow;
     }
   }

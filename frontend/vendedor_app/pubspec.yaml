@@ -12,10 +12,14 @@ dependencies:
     sdk: flutter
 
   cupertino_icons: ^1.0.8
+  desktop_drop: ^0.4.4  
+  cross_file: ^0.3.3+8  
 
   # Networking
   dio: ^5.4.0
-  http: ^1.1.0
+  image_picker: ^1.0.7
+  http: ^1.2.0
+  http_parser: ^4.0.2
 
   # Estado e arquitetura
   provider: ^6.0.5

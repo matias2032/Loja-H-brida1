@@ -1,3 +1,6 @@
+
+//produto_model.dart
+
 class Produto {
   final int? idProduto;
   final String nomeProduto;
@@ -63,17 +66,32 @@ class Produto {
     };
   }
 
-  Map<String, dynamic> toJsonCreate() {
-    return {
-      'nomeProduto': nomeProduto,
-      'descricao': descricao,
-      'preco': preco,
-      'quantidadeEstoque': quantidadeEstoque,
-      'precoPromocional': precoPromocional,
-      'categorias': categorias,
-      'marcas': marcas,
-    };
-  }
+// Método para criar (sem ID)
+Map<String, dynamic> toJsonCreate() {
+  return {
+    'nomeProduto': nomeProduto,
+    'descricao': descricao,
+    'preco': preco,
+    'quantidadeEstoque': quantidadeEstoque,
+    'precoPromocional': precoPromocional,
+    'categorias': categorias,
+    'marcas': marcas,
+  };
+}
+
+// ✅ NOVO: Método para atualizar (preserva categorias/marcas se vazias)
+Map<String, dynamic> toJsonUpdate() {
+  return {
+    'nomeProduto': nomeProduto,
+    'descricao': descricao,
+    'preco': preco,
+    'quantidadeEstoque': quantidadeEstoque,
+    'precoPromocional': precoPromocional,
+    // Só incluir se não estiver vazio
+    if (categorias.isNotEmpty) 'categorias': categorias,
+    if (marcas.isNotEmpty) 'marcas': marcas,
+  };
+}
 
   Produto copyWith({
     int? idProduto,

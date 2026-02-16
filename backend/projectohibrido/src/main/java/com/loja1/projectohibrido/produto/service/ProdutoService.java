@@ -10,6 +10,12 @@ import com.loja1.projectohibrido.produto.entity.ProdutoImagem;
 import com.loja1.projectohibrido.produto.entity.ProdutoMarca;
 import com.loja1.projectohibrido.produto.repository.ProdutoImagemRepository;
 import com.loja1.projectohibrido.produto.repository.ProdutoRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+
+import jakarta.persistence.EntityManager;
+
 import com.loja1.projectohibrido.produto.repository.ProdutoMarcaRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -29,6 +35,9 @@ public class ProdutoService {
     private final ProdutoCategoriaRepository produtoCategoriaRepository;
     private final ProdutoImagemRepository produtoImagemRepository;
     private final ProdutoMarcaRepository produtoMarcaRepository; 
+    private final EntityManager entityManager;
+    private static final Logger log = LoggerFactory.getLogger(ProdutoService.class);
+
 
     // ===== CRUD BÁSICO =====
     
@@ -61,7 +70,13 @@ public ProdutoResponseDTO criar(ProdutoRequestDTO dto) {
 
 @Transactional
 public ProdutoResponseDTO atualizar(Integer id, ProdutoRequestDTO dto) {
-    log.info("Atualizando produto ID: {}", id);
+    log.info("========================================");
+    log.info("🔍 ATUALIZANDO PRODUTO ID: {}", id);
+    log.info("📥 Dados recebidos:");
+    log.info("   - Nome: {}", dto.getNomeProduto());
+    log.info("   - Categorias: {}", dto.getCategorias());
+    log.info("   - Marcas: {}", dto.getMarcas());
+    log.info("========================================");
     
     Produto produto = produtoRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Produto não encontrado com ID: " + id));
@@ -73,27 +88,57 @@ public ProdutoResponseDTO atualizar(Integer id, ProdutoRequestDTO dto) {
     produto.setPrecoPromocional(dto.getPrecoPromocional());
     
     Produto produtoAtualizado = produtoRepository.save(produto);
+    log.info("✅ Produto básico atualizado");
     
-    // Atualizar categorias: remover antigas e adicionar novas
-    if (dto.getCategorias() != null) {
+    // Atualizar categorias
+    if (dto.getCategorias() != null && !dto.getCategorias().isEmpty()) {
+        log.info("🔄 Atualizando categorias...");
         removerTodasCategorias(id);
+        entityManager.flush(); // ✅ FLUSH após deletar
+        entityManager.clear(); // ✅ LIMPAR cache
+        
+        log.info("   ❌ Categorias antigas removidas");
         associarCategorias(id, dto.getCategorias());
+        entityManager.flush(); // ✅ FLUSH após inserir
+        entityManager.clear(); // ✅ LIMPAR cache
+        
+        log.info("   ✅ Novas categorias associadas: {}", dto.getCategorias());
     }
     
-    // ✅ ADICIONE: Atualizar marcas: remover antigas e adicionar novas
-    if (dto.getMarcas() != null) {
+    // Atualizar marcas
+    if (dto.getMarcas() != null && !dto.getMarcas().isEmpty()) {
+        log.info("🔄 Atualizando marcas...");
         removerTodasMarcas(id);
+        entityManager.flush(); // ✅ FLUSH após deletar
+        entityManager.clear(); // ✅ LIMPAR cache
+        
+        log.info("   ❌ Marcas antigas removidas");
         associarMarcas(id, dto.getMarcas());
+        entityManager.flush(); // ✅ FLUSH após inserir
+        entityManager.clear(); // ✅ LIMPAR cache
+        
+        log.info("   ✅ Novas marcas associadas: {}", dto.getMarcas());
     }
     
-    log.info("Produto atualizado: {}", produtoAtualizado.getIdProduto());
-    return mapToResponseDTO(produtoAtualizado);
+    // ✅ BUSCAR O PRODUTO NOVAMENTE DO BANCO
+    Produto produtoFinal = produtoRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Produto não encontrado"));
+    
+    ProdutoResponseDTO response = mapToResponseDTO(produtoFinal);
+    log.info("📤 Resposta final:");
+    log.info("   - Categorias: {}", response.getCategorias());
+    log.info("   - Marcas: {}", response.getMarcas());
+    log.info("========================================");
+    
+    return response;
 }
 
-// ✅ ADICIONE ESTES MÉTODOS AUXILIARES:
-
 private void associarMarcas(Integer idProduto, List<Integer> marcas) {
-    marcas.forEach(idMarca -> associarMarca(idProduto, idMarca));
+    log.info("   📝 Associando {} marca(s) ao produto {}", marcas.size(), idProduto);
+    marcas.forEach(idMarca -> {
+        log.info("      - Associando marca ID: {}", idMarca);
+        associarMarca(idProduto, idMarca);
+    });
 }
 
 private void removerTodasMarcas(Integer idProduto) {
@@ -145,25 +190,32 @@ public List<ProdutoResponseDTO> listarAtivos() {
     // ===== ASSOCIAÇÕES COM CATEGORIAS =====
     
     @Transactional
-    public void associarCategoria(Integer idProduto, Integer idCategoria) {
-        log.info("Associando categoria {} ao produto {}", idCategoria, idProduto);
-        
-        if (!produtoRepository.existsById(idProduto)) {
-            throw new RuntimeException("Produto não encontrado com ID: " + idProduto);
-        }
-        
-        if (produtoCategoriaRepository.existsByIdCategoriaAndIdProduto(idCategoria, idProduto)) {
-            log.warn("Associação já existe entre produto {} e categoria {}", idProduto, idCategoria);
-            return;
-        }
-        
-        ProdutoCategoria pc = new ProdutoCategoria();
-        pc.setIdProduto(idProduto);
-        pc.setIdCategoria(idCategoria);
-        produtoCategoriaRepository.save(pc);
-        
-        log.info("Categoria {} associada ao produto {} com sucesso", idCategoria, idProduto);
+public void associarCategoria(Integer idProduto, Integer idCategoria) {
+    log.info("Associando categoria {} ao produto {}", idCategoria, idProduto);
+    
+    if (!produtoRepository.existsById(idProduto)) {
+        throw new RuntimeException("Produto não encontrado com ID: " + idProduto);
     }
+    
+    if (produtoCategoriaRepository.existsByIdCategoriaAndIdProduto(idCategoria, idProduto)) {
+        log.warn("Associação já existe entre produto {} e categoria {}", idProduto, idCategoria);
+        return;
+    }
+    
+    ProdutoCategoria pc = new ProdutoCategoria();
+    pc.setIdProduto(idProduto);
+    pc.setIdCategoria(idCategoria);
+    
+    // ✅ MUDANÇA: saveAndFlush() em vez de save()
+    produtoCategoriaRepository.saveAndFlush(pc);
+    
+    log.info("Categoria {} associada ao produto {} com sucesso", idCategoria, idProduto);
+    log.info("🔍 DEBUG: Verificando se foi salvo...");
+    
+    // ✅ ADICIONE: Verificação imediata
+    boolean existe = produtoCategoriaRepository.existsByIdCategoriaAndIdProduto(idCategoria, idProduto);
+    log.info("🔍 DEBUG: Associação existe após save? {}", existe);
+}
     
     @Transactional
     public void desassociarCategoria(Integer idProduto, Integer idCategoria) {
@@ -172,10 +224,14 @@ public List<ProdutoResponseDTO> listarAtivos() {
         log.info("Categoria {} desassociada do produto {} com sucesso", idCategoria, idProduto);
     }
     
-    private void associarCategorias(Integer idProduto, List<Integer> categorias) {
-        categorias.forEach(idCategoria -> associarCategoria(idProduto, idCategoria));
-    }
-    
+ private void associarCategorias(Integer idProduto, List<Integer> categorias) {
+    log.info("   📝 Associando {} categoria(s) ao produto {}", categorias.size(), idProduto);
+    categorias.forEach(idCategoria -> {
+        log.info("      - Associando categoria ID: {}", idCategoria);
+        associarCategoria(idProduto, idCategoria);
+    });
+}
+
     private void removerTodasCategorias(Integer idProduto) {
         List<ProdutoCategoria> associacoes = produtoCategoriaRepository.findByIdProduto(idProduto);
         associacoes.forEach(assoc -> 
@@ -297,9 +353,16 @@ public void associarMarca(Integer idProduto, Integer idMarca) {
     ProdutoMarca pm = new ProdutoMarca();
     pm.setIdProduto(idProduto);
     pm.setIdMarca(idMarca);
-    produtoMarcaRepository.save(pm);
+    
+    // ✅ MUDANÇA: saveAndFlush() em vez de save()
+    produtoMarcaRepository.saveAndFlush(pm);
     
     log.info("Marca {} associada ao produto {} com sucesso", idMarca, idProduto);
+    log.info("🔍 DEBUG: Verificando se foi salvo...");
+    
+    // ✅ ADICIONE: Verificação imediata
+    boolean existe = produtoMarcaRepository.existsByIdMarcaAndIdProduto(idMarca, idProduto);
+    log.info("🔍 DEBUG: Associação existe após save? {}", existe);
 }
 
 @Transactional
