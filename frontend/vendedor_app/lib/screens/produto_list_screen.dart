@@ -256,7 +256,7 @@ class _ProdutoListScreenState extends State<ProdutoListScreen> {
                           children: [
                             if (produto.precoPromocional != null) ...[
                               Text(
-                                'R\$ ${produto.preco.toStringAsFixed(2)}',
+                                'MZN ${produto.preco.toStringAsFixed(2)}',
                                 style: const TextStyle(
                                   fontSize: 12,
                                   decoration: TextDecoration.lineThrough,
@@ -264,7 +264,7 @@ class _ProdutoListScreenState extends State<ProdutoListScreen> {
                                 ),
                               ),
                               Text(
-                                'R\$ ${produto.precoPromocional!.toStringAsFixed(2)}',
+                                'MZN ${produto.precoPromocional!.toStringAsFixed(2)}',
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -273,7 +273,7 @@ class _ProdutoListScreenState extends State<ProdutoListScreen> {
                               ),
                             ] else
                               Text(
-                                'R\$ ${produto.preco.toStringAsFixed(2)}',
+                                'MZN ${produto.preco.toStringAsFixed(2)}',
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,

@@ -478,7 +478,7 @@ Future<void> _definirImagemPrincipal(ProdutoImagem imagem) async {
                           child: _buildCampoNumerico(
                             controller: _precoController,
                             label: 'Preço *',
-                            prefixo: 'R\$ ',
+                            prefixo: 'MZN ',
                             validator: (v) {
                               if (v!.isEmpty) return 'Campo obrigatório';
                               if (double.tryParse(v.replaceAll(',', '.')) == null) {
@@ -493,7 +493,7 @@ Future<void> _definirImagemPrincipal(ProdutoImagem imagem) async {
                           child: _buildCampoNumerico(
                             controller: _precoPromocionalController,
                             label: 'Preço Promocional',
-                            prefixo: 'R\$ ',
+                            prefixo: 'MZN',
                           ),
                         ),
                       ],

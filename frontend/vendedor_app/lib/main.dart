@@ -8,6 +8,9 @@ import 'screens/marcas_list_screen.dart';
 import 'screens/marca_form_screen.dart';
 import 'screens/produto_form_screen.dart';
 import 'screens/produto_list_screen.dart';
+import 'screens/menu.dart';                         // ✅ NOVO
+import 'screens/detalhes_produto.dart';             // ✅ NOVO
+import 'screens/pedidos_por_finalizar.dart'; // ✅ NOVO
 
 
 void main() {
@@ -38,53 +41,80 @@ class MyApp extends StatelessWidget {
       themeMode: ThemeMode.system,
       
       // ===== TELA INICIAL =====
-      home: const HomeScreen(), // Tela com menu de navegação
+      home: const HomeScreen(),
       
       // ===== ROTAS NOMEADAS =====
       onGenerateRoute: (settings) {
-        // Rota com argumentos (Detalhes do Usuário)
+
+        // ─── Rotas com argumentos ──────────────────────────────────────────
+
+        // Detalhes do Usuário
         if (settings.name == '/detalhes_usuario') {
           final usuarioId = settings.arguments as int;
           return MaterialPageRoute(
             builder: (context) => DetalhesUsuarioScreen(usuarioId: usuarioId),
           );
         }
-        
-        // Rotas simples
+
+        // ✅ Detalhes do Produto (recebe Produto como argumento)
+        if (settings.name == '/detalhes_produto') {
+          final args = settings.arguments as Map<String, dynamic>;
+          return MaterialPageRoute(
+            builder: (context) => DetalhesProdutoScreen(
+              produto:    args['produto'],
+              marcas:     args['marcas']     ?? [],
+              categorias: args['categorias'] ?? [],
+            ),
+          );
+        }
+
+        // ─── Rotas simples ─────────────────────────────────────────────────
         switch (settings.name) {
+
           // USUÁRIOS
           case '/usuarios':
           case '/gerenciar_usuarios':
             return MaterialPageRoute(
               builder: (context) => const UsuarioListScreen(),
             );
-          
+
           // CATEGORIAS
           case '/categorias':
             return MaterialPageRoute(
               builder: (context) => const CategoriasListScreen(),
             );
-          
+
           // MARCAS
           case '/marcas':
             return MaterialPageRoute(
               builder: (context) => const MarcasListScreen(),
             );
 
-            // PRODUTOS
-case '/produtos':
-  return MaterialPageRoute(
-    builder: (context) => const ProdutoListScreen(),
-  );
+          // PRODUTOS (gestão interna)
+          case '/produtos':
+            return MaterialPageRoute(
+              builder: (context) => const ProdutoListScreen(),
+            );
 
-          
+          // ✅ MENU — catálogo de produtos activos para criação de pedidos
+          case '/menu':
+            return MaterialPageRoute(
+              builder: (context) => const MenuScreen(),
+            );
+
+          // ✅ PEDIDOS POR FINALIZAR
+          case '/pedidos_por_finalizar':
+            return MaterialPageRoute(
+              builder: (context) => const PedidosPorFinalizarScreen(),
+            );
+
           // HOME
           case '/home':
             return MaterialPageRoute(
               builder: (context) => const HomeScreen(),
             );
-          
-          // Rota padrão (não encontrada)
+
+          // Rota não encontrada → volta ao home
           default:
             return MaterialPageRoute(
               builder: (context) => const HomeScreen(),
@@ -95,7 +125,10 @@ case '/produtos':
   }
 }
 
-// ===== TELA HOME COM MENU =====
+// ═══════════════════════════════════════════════════════════════════════════
+// HOME SCREEN
+// ═══════════════════════════════════════════════════════════════════════════
+
 class HomeScreen extends StatelessWidget {
   const HomeScreen({Key? key}) : super(key: key);
 
@@ -139,14 +172,23 @@ class HomeScreen extends StatelessWidget {
               title: 'Produtos',
               icon: Icons.inventory,
               color: Colors.purple,
-              route: '/produtos', // A implementar
+              route: '/produtos',
             ),
+            // ✅ NOVO — Menu / Catálogo de vendas
             _buildMenuCard(
               context,
-              title: 'Vendas',
-              icon: Icons.shopping_cart,
-              color: Colors.red,
-              route: '/vendas', // A implementar
+              title: 'Menu',
+              icon: Icons.storefront,
+              color: Colors.indigo,
+              route: '/menu',
+            ),
+            // ✅ NOVO — Pedidos por finalizar
+            _buildMenuCard(
+              context,
+              title: 'Por Finalizar',
+              icon: Icons.receipt_long,
+              color: Colors.amber[700]!,
+              route: '/pedidos_por_finalizar',
             ),
             _buildMenuCard(
               context,
