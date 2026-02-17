@@ -82,6 +82,7 @@ class Pedido {
   final String? pontoReferencia;
   final double troco;
   final List<ItemPedido> itens;
+  final bool ativo;
 
   Pedido({
     this.idPedido,
@@ -100,6 +101,7 @@ class Pedido {
     this.pontoReferencia,
     this.troco = 0.0,
     this.itens = const [],
+    this.ativo = false,
   });
 
   factory Pedido.fromJson(Map<String, dynamic> json) {
@@ -126,6 +128,7 @@ class Pedido {
               (json['itens'] as List).map((e) => ItemPedido.fromJson(e)),
             )
           : [],
+          ativo: json['ativo'] ?? false,
     );
   }
 
@@ -195,6 +198,7 @@ class Pedido {
     String? pontoReferencia,
     double? troco,
     List<ItemPedido>? itens,
+    bool? ativo,
   }) {
     return Pedido(
       idPedido:           idPedido           ?? this.idPedido,
@@ -213,6 +217,7 @@ class Pedido {
       pontoReferencia:    pontoReferencia    ?? this.pontoReferencia,
       troco:              troco              ?? this.troco,
       itens:              itens              ?? this.itens,
+      ativo:              ativo              ?? this.ativo,
     );
   }
 

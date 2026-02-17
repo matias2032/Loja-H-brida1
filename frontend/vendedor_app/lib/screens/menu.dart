@@ -7,6 +7,9 @@ import '../services/marca_service.dart';
 import '../services/categoria_service.dart';
 import '../config/api_config.dart';
 import 'detalhes_produto.dart';
+import '../controllers/pedido_ativo_controller.dart';
+import '../widgets/pedido_ativo_banner.dart';
+import '../models/pedido_model.dart';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({Key? key}) : super(key: key);
@@ -43,6 +46,7 @@ class _MenuScreenState extends State<MenuScreen> {
     super.initState();
     _carregarDados();
     _searchController.addListener(_aplicarFiltros);
+    PedidoAtivoController.instance.carregar(1);
   }
 
   @override
@@ -180,12 +184,19 @@ class _MenuScreenState extends State<MenuScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      appBar: _buildAppBar(),
-      body: _buildBody(),
-    );
-  }
+     return Scaffold(
+    backgroundColor: const Color(0xFFF8F9FA),
+    appBar: _buildAppBar(),
+    body: Stack(                          // ← NOVO
+      children: [
+        _buildBody(),
+        PedidoAtivoBanner(               // ← NOVO
+          onDesativado: _carregarDados,  // refresh após desactivar
+        ),
+      ],
+    ),
+  );
+}
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
@@ -582,8 +593,11 @@ onTap: semEstoque
             ),
           ),
         );
-        // Recarrega se pedido foi criado (DetalhesProduto faz pop(true))
-        if (resultado == true) {
+        if (resultado is Pedido) {
+          // Pedido novo criado — actualiza o controller
+          PedidoAtivoController.instance.definir(resultado);
+          await _carregarDados();
+        } else if (resultado == true) {
           await _carregarDados();
         }
       },

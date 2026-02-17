@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/pedido_model.dart';
 import '../services/pedido_service.dart';
+import '../controllers/pedido_ativo_controller.dart';
+import '../widgets/pedido_ativo_banner.dart';
 
 class PedidosPorFinalizarScreen extends StatefulWidget {
   const PedidosPorFinalizarScreen({Key? key}) : super(key: key);
@@ -155,7 +157,7 @@ class _PedidosPorFinalizarScreenState
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+                backgroundColor: Colors.white,
         elevation: 0,
         title: const Text(
           'Pedidos por Finalizar',
@@ -177,8 +179,15 @@ class _PedidosPorFinalizarScreenState
           child: Container(color: Colors.grey[200], height: 1),
         ),
       ),
-      body: _buildBody(),
-    );
+          body: Stack(
+      children: [
+        _buildBody(),
+        PedidoAtivoBanner(
+          onDesativado: _carregarPedidos,
+        ),
+      ],
+    ),
+     );
   }
 
   Widget _buildBody() {

@@ -52,13 +52,12 @@ class PedidoService {
   // POST /api/pedidos/{idPedido}/itens
   // ════════════════════════════════════════════════════════════════════════
 
-  Future<Pedido> adicionarItem(int idPedido, ItemPedido item) async {
-    try {
-      final body = {
-        'idProduto': item.idProduto,
-        'quantidade': item.quantidade,
-      };
-
+Future<Pedido> adicionarItem(int idPedido, ItemPedido item) async {
+  try {
+    final body = {
+      'idProduto': item.idProduto,
+      'quantidade': item.quantidade,
+    };
       print('========================================');
       print('🔍 ADICIONANDO ITEM AO PEDIDO $idPedido');
       print('📤 Dados enviados: ${json.encode(body)}');
@@ -131,6 +130,48 @@ class PedidoService {
       rethrow;
     }
   }
+
+  // Busca o pedido activo do utilizador (null se não houver)
+Future<Pedido?> buscarPedidoAtivo(int idUsuario) async {
+  try {
+    final response = await http
+        .get(
+          Uri.parse('${ApiConfig.pedidosUrl}/ativo/$idUsuario'),
+          headers: ApiConfig.defaultHeaders,
+        )
+        .timeout(ApiConfig.timeout);
+
+    if (response.statusCode == 200) {
+      return Pedido.fromJson(json.decode(utf8.decode(response.bodyBytes)));
+    } else if (response.statusCode == 204) {
+      return null; // Nenhum pedido activo
+    } else {
+      throw Exception('Erro ao buscar pedido activo: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('❌ Erro no buscarPedidoAtivo: $e');
+    rethrow;
+  }
+}
+
+// Desactiva um pedido
+Future<void> desativarPedido(int idPedido) async {
+  try {
+    final response = await http
+        .post(
+          Uri.parse('${ApiConfig.pedidosUrl}/$idPedido/desativar'),
+          headers: ApiConfig.defaultHeaders,
+        )
+        .timeout(ApiConfig.timeout);
+
+    if (response.statusCode != 204) {
+      throw Exception('Erro ao desactivar pedido: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('❌ Erro no desativarPedido: $e');
+    rethrow;
+  }
+}
 
   // ════════════════════════════════════════════════════════════════════════
   // d) ELIMINAR ITEM DO PEDIDO

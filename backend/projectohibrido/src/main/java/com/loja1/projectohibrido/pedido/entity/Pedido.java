@@ -72,9 +72,14 @@ public class Pedido {
     @Column(name = "oculto_cliente")
     private Short ocultoCliente;
 
+    @Column(name = "ativo", nullable = false)
+    private Boolean ativo = false;
+
     @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL,
                orphanRemoval = true, fetch = FetchType.LAZY)
     private List<ItemPedido> itens = new ArrayList<>();
+
+    
 
     // ─── Construtor vazio (obrigatório pelo JPA) ─────────────────────────────
     public Pedido() {}
@@ -102,6 +107,7 @@ public class Pedido {
         public Builder troco(BigDecimal v)           { p.troco = v;               return this; }
         public Builder ocultoCliente(Short v)        { p.ocultoCliente = v;       return this; }
         public Pedido build()                        { return p; }
+        public Builder ativo(Boolean v)              { p.ativo = v; return this; }
     }
 
     // ─── Helper ──────────────────────────────────────────────────────────────
@@ -133,6 +139,7 @@ public class Pedido {
     public BigDecimal   getTroco()               { return troco; }
     public Short        getOcultoCliente()       { return ocultoCliente; }
     public List<ItemPedido> getItens()           { return itens; }
+    public Boolean getAtivo()                    { return ativo; }
 
     // ─── Setters ─────────────────────────────────────────────────────────────
     public void setIdPedido(Integer v)            { this.idPedido = v; }
@@ -156,4 +163,5 @@ public class Pedido {
     public void setTroco(BigDecimal v)            { this.troco = v; }
     public void setOcultoCliente(Short v)         { this.ocultoCliente = v; }
     public void setItens(List<ItemPedido> v)      { this.itens = v; }
+    public void setAtivo(Boolean v)               { this.ativo = v; }
 }

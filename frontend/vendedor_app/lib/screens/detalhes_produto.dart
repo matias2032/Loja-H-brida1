@@ -5,6 +5,8 @@ import '../models/categoria_model.dart';
 import '../models/pedido_model.dart';
 import '../services/pedido_service.dart';
 import '../config/api_config.dart';
+import '../controllers/pedido_ativo_controller.dart';
+import '../widgets/pedido_ativo_banner.dart';
 
 class DetalhesProdutoScreen extends StatefulWidget {
   final Produto produto;
@@ -34,6 +36,8 @@ class _DetalhesProdutoScreenState extends State<DetalhesProdutoScreen> {
   double get precoEfetivo => produto.precoPromocional ?? produto.preco;
   double get totalParcial => precoEfetivo * _quantidade;
   bool get temPromocao => produto.precoPromocional != null;
+  Pedido? get _pedidoAtivo => PedidoAtivoController.instance.pedidoAtivo.value;
+bool get _temPedidoAtivo => _pedidoAtivo != null;
 
   String get nomesMarcas {
     if (produto.marcas.isEmpty) return 'Sem marca';
@@ -88,18 +92,40 @@ class _DetalhesProdutoScreenState extends State<DetalhesProdutoScreen> {
 
   // ─── Criação de pedido ────────────────────────────────────────────────────
 
-  Future<void> _criarPedido() async {
-    if (_isCriandoPedido) return;
+Future<void> _criarPedido() async {
+  if (_isCriandoPedido) return;
 
-    final confirmado = await _mostrarDialogoConfirmacao();
-    if (!confirmado) return;
+  final confirmado = await _mostrarDialogoConfirmacao();
+  if (!confirmado) return;
 
-    setState(() => _isCriandoPedido = true);
+  setState(() => _isCriandoPedido = true);
 
-    try {
-      // Monta o objecto Pedido com 1 item
-      // O backend atribui statusPedido = "por finalizar" automaticamente,
-      // mas enviamos explicitamente para garantir consistência.
+  try {
+    Pedido pedidoResultado;
+
+    if (_temPedidoAtivo) {
+      // ── Adiciona ao pedido activo existente ──────────────────────────
+      final item = ItemPedido(
+        idProduto: produto.idProduto!,
+        nomeProduto: produto.nomeProduto,
+        quantidade: _quantidade,
+        precoUnitario: precoEfetivo,
+        subtotal: totalParcial,
+      );
+      pedidoResultado = await _pedidoService.adicionarItem(
+        _pedidoAtivo!.idPedido!,
+        item,
+      );
+      // Actualiza o controller com o pedido actualizado
+      PedidoAtivoController.instance.definir(pedidoResultado);
+
+      _mostrarSnack(
+        '✅ Item adicionado ao pedido ${pedidoResultado.reference ?? ''}! '
+        'Total: MZN ${pedidoResultado.total.toStringAsFixed(2)}',
+        Colors.green,
+      );
+    } else {
+      // ── Cria um novo pedido ──────────────────────────────────────────
       final novoPedido = Pedido(
         idUsuario: 1, // TODO: substituir pelo id do utilizador autenticado
         idTipoPagamento: 1,
@@ -114,92 +140,145 @@ class _DetalhesProdutoScreenState extends State<DetalhesProdutoScreen> {
           ),
         ],
       );
-
-      final pedidoCriado = await _pedidoService.criarPedido(novoPedido);
+      pedidoResultado = await _pedidoService.criarPedido(novoPedido);
+      // Regista como pedido activo
+      PedidoAtivoController.instance.definir(pedidoResultado);
 
       _mostrarSnack(
-        '✅ Pedido ${pedidoCriado.reference ?? ''} criado! '
-        'Total: MZN ${pedidoCriado.total.toStringAsFixed(2)}',
+        '✅ Pedido ${pedidoResultado.reference ?? ''} criado! '
+        'Total: MZN ${pedidoResultado.total.toStringAsFixed(2)}',
         Colors.green,
       );
-
-      if (mounted) Navigator.pop(context, true);
-    } catch (e) {
-      _mostrarSnack('Erro ao criar pedido: $e', Colors.red);
-    } finally {
-      if (mounted) setState(() => _isCriandoPedido = false);
     }
-  }
 
-  Future<bool> _mostrarDialogoConfirmacao() async {
-    return await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16)),
-            title: const Text('Confirmar Pedido'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(produto.nomeProduto,
-                    style:
-                        const TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                _dialogRow('Quantidade:', '$_quantidade'),
-                _dialogRow('Preço unitário:',
-                    'MZN ${precoEfetivo.toStringAsFixed(2)}'),
-                const Divider(height: 20),
-                _dialogRow(
-                  'Total:',
-                  'MZN ${totalParcial.toStringAsFixed(2)}',
-                  bold: true,
-                ),
-                const SizedBox(height: 12),
+    if (mounted) Navigator.pop(context, pedidoResultado);
+  } catch (e) {
+    _mostrarSnack('Erro: $e', Colors.red);
+  } finally {
+    if (mounted) setState(() => _isCriandoPedido = false);
+  }
+}
+
+Future<bool> _mostrarDialogoConfirmacao() async {
+  final pedidoAtivo = _pedidoAtivo;
+  final adicionando = pedidoAtivo != null;
+
+  return await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16)),
+          title: Text(adicionando ? 'Adicionar ao Pedido' : 'Confirmar Pedido'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Badge do pedido activo ──────────────────────────────
+              if (adicionando) ...[
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.blue[50],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.blue[200]!),
+                    color: const Color(0xFF1A1A2E).withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(Icons.info_outline,
-                          color: Colors.blue, size: 16),
-                      SizedBox(width: 8),
+                      const Icon(Icons.shopping_cart,
+                          size: 16, color: Color(0xFF1A1A2E)),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'O pedido ficará em "Por Finalizar" aguardando confirmação.',
-                          style: TextStyle(
-                              fontSize: 12, color: Colors.blue),
+                          'Pedido activo: ${pedidoAtivo.reference ?? '—'}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: Color(0xFF1A1A2E),
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(height: 12),
               ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancelar'),
+
+              // ── Detalhes do item ────────────────────────────────────
+              Text(produto.nomeProduto,
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              _dialogRow('Quantidade:', '$_quantidade'),
+              _dialogRow('Preço unitário:',
+                  'MZN ${precoEfetivo.toStringAsFixed(2)}'),
+              const Divider(height: 20),
+              _dialogRow(
+                'Subtotal:',
+                'MZN ${totalParcial.toStringAsFixed(2)}',
+                bold: true,
               ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
+              const SizedBox(height: 12),
+
+              // ── Nota informativa ────────────────────────────────────
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: adicionando ? Colors.green[50] : Colors.blue[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: adicionando
+                        ? Colors.green[200]!
+                        : Colors.blue[200]!,
+                  ),
                 ),
-                child: const Text('Confirmar'),
+                child: Row(
+                  children: [
+                    Icon(
+                      adicionando
+                          ? Icons.add_shopping_cart
+                          : Icons.info_outline,
+                      color: adicionando ? Colors.green : Colors.blue,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        adicionando
+                            ? 'Este item será adicionado ao pedido ${pedidoAtivo.reference}.'
+                            : 'O pedido ficará em "Por Finalizar" aguardando confirmação.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: adicionando
+                              ? Colors.green[700]
+                              : Colors.blue[700],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-        ) ??
-        false;
-  }
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor:
+                    adicionando ? Colors.green[700] : Colors.green[600],
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+              ),
+              child: Text(adicionando ? 'Adicionar' : 'Confirmar'),
+            ),
+          ],
+        ),
+      ) ??
+      false;
+}
 
   Widget _dialogRow(String label, String valor, {bool bold = false}) {
     return Padding(
@@ -613,41 +692,57 @@ class _DetalhesProdutoScreenState extends State<DetalhesProdutoScreen> {
     );
   }
 
-  Widget _buildBotaoPedido() {
-    final semEstoque = produto.quantidadeEstoque == 0;
-    return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: ElevatedButton.icon(
-        onPressed:
-            semEstoque || _isCriandoPedido ? null : _criarPedido,
-        icon: _isCriandoPedido
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                    strokeWidth: 2, color: Colors.white))
-            : Icon(semEstoque
-                ? Icons.block
-                : Icons.shopping_cart_checkout),
-        label: Text(
-          _isCriandoPedido
-              ? 'A criar pedido...'
-              : semEstoque
-                  ? 'Produto Indisponível'
-                  : 'Criar Pedido',
-          style: const TextStyle(
-              fontSize: 16, fontWeight: FontWeight.bold),
+Widget _buildBotaoPedido() {
+  final semEstoque = produto.quantidadeEstoque == 0;
+
+  // Reactivo ao pedido activo — reconstrói quando muda
+  return ValueListenableBuilder<Pedido?>(
+    valueListenable: PedidoAtivoController.instance.pedidoAtivo,
+    builder: (context, pedidoAtivo, _) {
+      final adicionando = pedidoAtivo != null;
+      final label = _isCriandoPedido
+          ? (adicionando ? 'A adicionar...' : 'A criar pedido...')
+          : semEstoque
+              ? 'Produto Indisponível'
+              : adicionando
+                  ? 'Adicionar ao ${pedidoAtivo.reference}'
+                  : 'Criar Pedido';
+
+      final icone = _isCriandoPedido
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: Colors.white))
+          : Icon(semEstoque
+              ? Icons.block
+              : adicionando
+                  ? Icons.add_shopping_cart
+                  : Icons.shopping_cart_checkout);
+
+      return SizedBox(
+        width: double.infinity,
+        height: 56,
+        child: ElevatedButton.icon(
+          onPressed: semEstoque || _isCriandoPedido ? null : _criarPedido,
+          icon: icone,
+          label: Text(label,
+              style: const TextStyle(
+                  fontSize: 15, fontWeight: FontWeight.bold)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: semEstoque
+                ? Colors.grey
+                : adicionando
+                    ? Colors.green[700]
+                    : Colors.green[600],
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14)),
+            elevation: semEstoque ? 0 : 2,
+          ),
         ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor:
-              semEstoque ? Colors.grey : Colors.green[600],
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14)),
-          elevation: semEstoque ? 0 : 2,
-        ),
-      ),
-    );
-  }
+      );
+    },
+  );
+}
 }

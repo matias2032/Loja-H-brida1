@@ -11,12 +11,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -44,12 +44,14 @@ public class PedidoService {
      * ESTOQUE: desconta imediatamente sem registar movimentação.
      * TRANSAÇÃO: tudo em bloco — se qualquer item falhar, reverte tudo.
      */
-    @Transactional
-    public PedidoResponseDTO criarPedido(PedidoRequestDTO dto) {
-        log.info("Criando pedido para usuário {}", dto.idUsuario);
+@Transactional
+public PedidoResponseDTO criarPedido(PedidoRequestDTO dto) {
+    log.info("Criando pedido para usuário {}", dto.idUsuario);
 
-        // 1. Montar entidade Pedido
-        Pedido pedido = Pedido.builder()
+    // ── NOVO: desactiva qualquer pedido activo anterior ───────────────────
+    pedidoRepository.desativarPedidosDoUsuario(dto.idUsuario);
+
+    Pedido pedido = Pedido.builder()
                 .reference(gerarReference())
                 .idUsuario(dto.idUsuario)
                 .telefone(dto.telefone)
@@ -59,6 +61,7 @@ public class PedidoService {
                 .idTipoOrigemPedido(dto.idTipoOrigemPedido)
                 .dataPedido(LocalDateTime.now())
                 .statusPedido("por finalizar")
+                 .ativo(true)          
                 .notificacaoVista((short) 0)
                 .total(BigDecimal.ZERO)       // recalculado abaixo
                 .enderecoJson(dto.enderecoJson)
@@ -87,6 +90,23 @@ public class PedidoService {
         return toResponseDTO(pedido);
     }
 
+    @Transactional(readOnly = true)
+public Optional<PedidoResponseDTO> buscarPedidoAtivo(Integer idUsuario) {
+    return pedidoRepository
+            .findByIdUsuarioAndAtivoTrue(idUsuario)
+            .map(this::toResponseDTO);
+}
+
+
+// ─── Método novo: desativar pedido ──────────────────────────────────────
+@Transactional
+public void desativarPedido(Integer idPedido) {
+    Pedido pedido = buscarPedidoComItens(idPedido);
+    pedido.setAtivo(false);
+    pedidoRepository.save(pedido);
+    log.info("Pedido {} desactivado", pedido.getReference());
+}
+
     // ════════════════════════════════════════════════════════════════════════
     // b) ADICIONAR ITEM AO PEDIDO
     // ════════════════════════════════════════════════════════════════════════
@@ -97,20 +117,26 @@ public class PedidoService {
      * ESTOQUE: desconta a quantidade solicitada sem registar movimentação.
      * VALIDAÇÃO: pedido deve estar em status editável.
      */
-    @Transactional
-    public PedidoResponseDTO adicionarItem(Integer idPedido, ItemPedidoRequestDTO dto) {
-        Pedido pedido = buscarPedidoComItens(idPedido);
-        validarStatusEditavel(pedido, "adição de item");
+@Transactional
+public PedidoResponseDTO adicionarItem(Integer idPedido, ItemPedidoRequestDTO dto) {
+    Pedido pedido = buscarPedidoComItens(idPedido);
+    validarStatusEditavel(pedido, "adição de item");
 
-        adicionarItemInterno(pedido, dto.idProduto, dto.quantidade);
-
-        pedido.recalcularTotal();
-        pedidoRepository.save(pedido);
-
-        log.info("Item produto {} adicionado ao pedido {}", dto.idProduto, idPedido);
-        return toResponseDTO(pedido);
+    // ── NOVO: garante que só se adicionam itens ao pedido activo ──────────
+    if (!Boolean.TRUE.equals(pedido.getAtivo())) {
+        throw new StatusPedidoInvalidoException(
+            pedido.getStatusPedido(),
+            "adição de item — pedido não está activo"
+        );
     }
 
+    adicionarItemInterno(pedido, dto.idProduto, dto.quantidade);
+    pedido.recalcularTotal();
+    pedidoRepository.save(pedido);
+
+    log.info("Item produto {} adicionado ao pedido activo {}", dto.idProduto, idPedido);
+    return toResponseDTO(pedido);
+}
     // ════════════════════════════════════════════════════════════════════════
     // c) EDITAR QUANTIDADE DE UM ITEM
     // ════════════════════════════════════════════════════════════════════════
@@ -236,6 +262,7 @@ public class PedidoService {
 
         // 2. Actualizar status do pedido
         pedido.setStatusPedido("cancelado");
+         pedido.setAtivo(false);   
         pedido.setDataFimPedido(LocalDateTime.now());
         pedidoRepository.save(pedido);
 
@@ -404,6 +431,7 @@ public class PedidoService {
         dto.bairro            = pedido.getBairro();
         dto.pontoReferencia   = pedido.getPontoReferencia();
         dto.troco             = pedido.getTroco();
+        dto.ativo = pedido.getAtivo();
 
         dto.itens = pedido.getItens().stream()
                 .map(this::toItemResponseDTO)

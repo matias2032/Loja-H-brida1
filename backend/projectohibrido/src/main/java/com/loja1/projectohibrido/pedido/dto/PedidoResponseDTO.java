@@ -4,9 +4,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
@@ -30,4 +27,5 @@ public class PedidoResponseDTO {
     public String pontoReferencia;
     public BigDecimal troco;
     public List<ItemPedidoResponseDTO> itens;
+    public Boolean ativo;
 }

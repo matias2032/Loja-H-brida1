@@ -127,4 +127,23 @@ public class PedidoController {
 
         return ResponseEntity.ok(pedidoService.listarPorStatus(status));
     }
+
+    // GET /api/pedidos/ativo/{idUsuario}
+@GetMapping("/ativo/{idUsuario}")
+public ResponseEntity<PedidoResponseDTO> buscarPedidoAtivo(
+        @PathVariable Integer idUsuario) {
+
+    return pedidoService.buscarPedidoAtivo(idUsuario)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.noContent().build()); // 204 se não há activo
+}
+
+// POST /api/pedidos/{idPedido}/desativar
+@PostMapping("/{idPedido}/desativar")
+public ResponseEntity<Void> desativarPedido(
+        @PathVariable Integer idPedido) {
+
+    pedidoService.desativarPedido(idPedido);
+    return ResponseEntity.noContent().build();
+}
 }
