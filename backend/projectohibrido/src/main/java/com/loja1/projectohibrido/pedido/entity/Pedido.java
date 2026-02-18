@@ -75,6 +75,12 @@ public class Pedido {
     @Column(name = "ativo", nullable = false)
     private Boolean ativo = false;
 
+    @Column(name = "nome_cliente", length = 250)
+private String nomeCliente;
+
+@Column(name = "apelido_cliente", length = 250)
+private String apelidoCliente;
+
     @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL,
                orphanRemoval = true, fetch = FetchType.LAZY)
     private List<ItemPedido> itens = new ArrayList<>();
@@ -108,6 +114,8 @@ public class Pedido {
         public Builder ocultoCliente(Short v)        { p.ocultoCliente = v;       return this; }
         public Pedido build()                        { return p; }
         public Builder ativo(Boolean v)              { p.ativo = v; return this; }
+        public Builder nomeCliente(String v)         { p.nomeCliente = v;    return this; }
+public Builder apelidoCliente(String v)              { p.apelidoCliente = v; return this; }
     }
 
     // ─── Helper ──────────────────────────────────────────────────────────────
@@ -140,6 +148,8 @@ public class Pedido {
     public Short        getOcultoCliente()       { return ocultoCliente; }
     public List<ItemPedido> getItens()           { return itens; }
     public Boolean getAtivo()                    { return ativo; }
+    public String getNomeCliente()               { return nomeCliente; }
+public String getApelidoCliente()                { return apelidoCliente; }
 
     // ─── Setters ─────────────────────────────────────────────────────────────
     public void setIdPedido(Integer v)            { this.idPedido = v; }
@@ -164,4 +174,6 @@ public class Pedido {
     public void setOcultoCliente(Short v)         { this.ocultoCliente = v; }
     public void setItens(List<ItemPedido> v)      { this.itens = v; }
     public void setAtivo(Boolean v)               { this.ativo = v; }
+    public void setNomeCliente(String v)          { this.nomeCliente = v; }
+public void setApelidoCliente(String v)           { this.apelidoCliente = v; }
 }

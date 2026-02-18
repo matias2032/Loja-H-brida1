@@ -32,6 +32,6 @@ Optional<Pedido> findByIdUsuarioAndAtivoTrue(Integer idUsuario);
 // Desactiva todos os pedidos activos de um utilizador (usado antes de criar novo)
 @Modifying
 @Query("UPDATE Pedido p SET p.ativo = FALSE WHERE p.idUsuario = :idUsuario AND p.ativo = TRUE")
-void desativarPedidosDoUsuario(@Param("idUsuario") Integer idUsuario);
+int desativarPedidosDoUsuario(@Param("idUsuario") Integer idUsuario);
 }
 

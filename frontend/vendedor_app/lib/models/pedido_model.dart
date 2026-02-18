@@ -83,6 +83,9 @@ class Pedido {
   final double troco;
   final List<ItemPedido> itens;
   final bool ativo;
+  final String? nomeCliente;
+final String? apelidoCliente;
+final double valorPagoManual;
 
   Pedido({
     this.idPedido,
@@ -102,6 +105,9 @@ class Pedido {
     this.troco = 0.0,
     this.itens = const [],
     this.ativo = false,
+    this.nomeCliente,
+this.apelidoCliente,
+this.valorPagoManual = 0.0,
   });
 
   factory Pedido.fromJson(Map<String, dynamic> json) {
@@ -129,6 +135,9 @@ class Pedido {
             )
           : [],
           ativo: json['ativo'] ?? false,
+          nomeCliente:      json['nomeCliente'],
+apelidoCliente:   json['apelidoCliente'],
+valorPagoManual:  (json['valorPagoManual'] as num? ?? 0).toDouble(),
     );
   }
 
@@ -199,6 +208,9 @@ class Pedido {
     double? troco,
     List<ItemPedido>? itens,
     bool? ativo,
+    String? nomeCliente,       
+    String? apelidoCliente,    
+    double? valorPagoManual,  
   }) {
     return Pedido(
       idPedido:           idPedido           ?? this.idPedido,
@@ -218,6 +230,10 @@ class Pedido {
       troco:              troco              ?? this.troco,
       itens:              itens              ?? this.itens,
       ativo:              ativo              ?? this.ativo,
+      nomeCliente:     nomeCliente     ?? this.nomeCliente,      
+      apelidoCliente:  apelidoCliente  ?? this.apelidoCliente,   
+      valorPagoManual: valorPagoManual ?? this.valorPagoManual,  
+  
     );
   }
 

@@ -3,6 +3,7 @@ import '../models/pedido_model.dart';
 import '../services/pedido_service.dart';
 import '../controllers/pedido_ativo_controller.dart';
 import '../widgets/pedido_ativo_banner.dart';
+import 'finalizar_pedido.dart';
 
 class PedidosPorFinalizarScreen extends StatefulWidget {
   const PedidosPorFinalizarScreen({Key? key}) : super(key: key);
@@ -19,6 +20,7 @@ class _PedidosPorFinalizarScreenState
   List<Pedido> _pedidos = [];
   bool _isLoading = true;
   String? _erro;
+    bool _operacaoEmAndamento = false;  
 
   @override
   void initState() {
@@ -58,22 +60,59 @@ class _PedidosPorFinalizarScreenState
   // ACÇÕES
   // ════════════════════════════════════════════════════════════════════════
 
-  Future<void> _cancelarPedido(Pedido pedido) async {
-    final confirmado = await _mostrarDialogoCancelamento(pedido);
-    if (!confirmado) return;
+Future<void> _cancelarPedido(Pedido pedido) async {
+  if (_operacaoEmAndamento) return;  // ← ADICIONAR
 
-    try {
-      await _pedidoService.cancelarPedido(
-        idPedido: pedido.idPedido!,
-        idUsuarioCancelou: 1, // TODO: substituir pelo id do utilizador autenticado
-        motivo: 'Cancelado pelo operador',
-      );
-      _mostrarSnack('Pedido ${pedido.reference} cancelado', Colors.orange);
-      await _carregarPedidos();
-    } catch (e) {
-      _mostrarSnack('Erro ao cancelar: $e', Colors.red);
-    }
+  final confirmado = await _mostrarDialogoCancelamento(pedido);
+  if (!confirmado) return;
+
+  setState(() => _operacaoEmAndamento = true);  // ← ADICIONAR
+
+  try {
+    await _pedidoService.cancelarPedido(
+      idPedido: pedido.idPedido!,
+      idUsuarioCancelou: 1,
+      motivo: 'Cancelado pelo operador',
+    );
+    if (pedido.ativo) PedidoAtivoController.instance.limpar();  // ← ADICIONAR
+    _mostrarSnack('Pedido ${pedido.reference} cancelado', Colors.orange);
+    await _carregarPedidos();
+  } catch (e) {
+    _mostrarSnack('Erro ao cancelar: $e', Colors.red);
+  } finally {
+    if (mounted) setState(() => _operacaoEmAndamento = false);  // ← ADICIONAR
   }
+}
+
+ Future<void> _toggleAtivacao(Pedido pedido) async {
+  if (_operacaoEmAndamento) return;
+
+  print('🔄 [TOGGLE] Clicado — ${pedido.reference} | ativo: ${pedido.ativo}');
+  setState(() => _operacaoEmAndamento = true);
+
+  try {
+    if (pedido.ativo) {
+      print('🔴 [TOGGLE] Desativando pedido ${pedido.idPedido}...');
+      await _pedidoService.desativarPedido(pedido.idPedido!);
+      PedidoAtivoController.instance.limpar();
+      print('✅ [TOGGLE] Controller limpo após desativação');
+      _mostrarSnack('Pedido ${pedido.reference} desativado', Colors.grey);
+    } else {
+      print('🟢 [TOGGLE] Ativando pedido ${pedido.idPedido}...');
+      final pedidoAtualizado = await _pedidoService.ativarPedido(pedido.idPedido!);
+      print('✅ [TOGGLE] Backend confirmou: ativo=${pedidoAtualizado.ativo}');
+      PedidoAtivoController.instance.definir(pedidoAtualizado);
+      _mostrarSnack('Pedido ${pedido.reference} ativado', Colors.green);
+    }
+
+    await _carregarPedidos();
+  } catch (e) {
+    print('❌ [TOGGLE] Erro: $e');
+    _mostrarSnack('Erro ao alterar ativação: $e', Colors.red);
+  } finally {
+    if (mounted) setState(() => _operacaoEmAndamento = false);
+  }
+}
 
   Future<bool> _mostrarDialogoCancelamento(Pedido pedido) async {
     return await showDialog<bool>(
@@ -147,6 +186,160 @@ class _PedidosPorFinalizarScreenState
       ),
     );
   }
+
+  Future<void> _editarQuantidade(Pedido pedido, ItemPedido item, int novaQtd) async {
+  if (_operacaoEmAndamento || novaQtd < 1) return;
+
+  setState(() => _operacaoEmAndamento = true);
+
+  try {
+    await _pedidoService.editarQuantidadeItem(
+      idPedido: pedido.idPedido!,
+      idItemPedido: item.idItemPedido!,
+      novaQuantidade: novaQtd,
+    );
+    _mostrarSnack('Quantidade atualizada', Colors.green);
+    await _carregarPedidos();
+    // Atualiza controller se for o pedido ativo
+    if (pedido.ativo) {
+      final atualizado = await _pedidoService.buscarPorId(pedido.idPedido!);
+      PedidoAtivoController.instance.definir(atualizado);
+    }
+  } catch (e) {
+    _mostrarSnack('Erro: $e', Colors.red);
+  } finally {
+    if (mounted) setState(() => _operacaoEmAndamento = false);
+  }
+}
+
+Future<void> _eliminarItem(Pedido pedido, ItemPedido item) async {
+  if (_operacaoEmAndamento) return;
+
+  final confirmado = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Text('Eliminar Item'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(item.nomeProduto,
+              style: const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Text('Quantidade: ${item.quantidade}'),
+          Text('Subtotal: MZN ${item.subtotal.toStringAsFixed(2)}'),
+          const SizedBox(height: 12),
+          if (pedido.itens.length == 1)
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.red[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red[200]!),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.warning, color: Colors.red, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Último item: o pedido será cancelado automaticamente.',
+                      style: TextStyle(fontSize: 12, color: Colors.red[700]),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue[200]!),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, color: Colors.blue, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'O estoque será restituído automaticamente.',
+                      style: TextStyle(fontSize: 12, color: Colors.blue[700]),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red,
+            foregroundColor: Colors.white,
+          ),
+          child: const Text('Eliminar'),
+        ),
+      ],
+    ),
+  );
+
+  if (confirmado != true) return;
+
+  setState(() => _operacaoEmAndamento = true);
+
+  try {
+    if (pedido.itens.length == 1) {
+      // Último item → cancela o pedido inteiro
+      await _pedidoService.cancelarPedido(
+        idPedido: pedido.idPedido!,
+        idUsuarioCancelou: 1,
+        motivo: 'Cancelado automaticamente (último item removido)',
+      );
+      if (pedido.ativo) PedidoAtivoController.instance.limpar();
+      _mostrarSnack('Pedido cancelado (último item removido)', Colors.orange);
+    } else {
+      // Remove apenas o item
+      await _pedidoService.eliminarItem(
+        idPedido: pedido.idPedido!,
+        idItemPedido: item.idItemPedido!,
+      );
+      _mostrarSnack('Item eliminado', Colors.green);
+      // Atualiza controller se for o pedido ativo
+      if (pedido.ativo) {
+        final atualizado = await _pedidoService.buscarPorId(pedido.idPedido!);
+        PedidoAtivoController.instance.definir(atualizado);
+      }
+    }
+    await _carregarPedidos();
+  } catch (e) {
+    _mostrarSnack('Erro: $e', Colors.red);
+  } finally {
+    if (mounted) setState(() => _operacaoEmAndamento = false);
+  }
+}
+
+Future<void> _abrirFinalizarPedido(Pedido pedido) async {
+  print('🏁 [NAV] Abrindo finalizar pedido: ${pedido.reference}');
+  final finalizado = await Navigator.push<bool>(
+    context,
+    MaterialPageRoute(
+      builder: (_) => FinalizarPedidoScreen(pedido: pedido),
+    ),
+  );
+  if (finalizado == true) {
+    print('✅ [NAV] Pedido finalizado — recarregando lista');
+    PedidoAtivoController.instance.limpar();
+    await _carregarPedidos();
+  }
+}
 
   // ════════════════════════════════════════════════════════════════════════
   // BUILD
@@ -269,138 +462,141 @@ class _PedidosPorFinalizarScreenState
   // CARD DO PEDIDO
   // ════════════════════════════════════════════════════════════════════════
 
-  Widget _buildCardPedido(Pedido pedido) {
-    return Card(
-      elevation: 0,
-      color: Colors.white,
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey[200]!),
+Widget _buildCardPedido(Pedido pedido) {
+  return Card(
+    elevation: 0,
+    color: Colors.white,
+    margin: const EdgeInsets.only(bottom: 12),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(16),
+      side: BorderSide(
+        color: pedido.ativo ? Colors.green[300]! : Colors.grey[200]!,
+        width: pedido.ativo ? 2 : 1,
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ─── Cabeçalho ─────────────────────────────────────────────
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Ícone
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1A1A2E).withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.receipt_outlined,
-                    color: Color(0xFF1A1A2E),
-                    size: 22,
-                  ),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ─── Cabeçalho com toggle ─────────────────────────────────
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: (pedido.ativo ? Colors.green : const Color(0xFF1A1A2E))
+                      .withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(width: 12),
-
-                // Referência + data
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        pedido.reference ?? '—',
+                child: Icon(
+                  pedido.ativo ? Icons.check_circle : Icons.receipt_outlined,
+                  color: pedido.ativo ? Colors.green : const Color(0xFF1A1A2E),
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(pedido.reference ?? '—',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 15,
                           color: Color(0xFF1A1A2E),
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        pedido.dataPedido != null
-                            ? _formatarData(pedido.dataPedido!)
-                            : '—',
-                        style: TextStyle(
-                          color: Colors.grey[500],
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Badge status
-                _buildBadgeStatus(),
-              ],
-            ),
-
-            const SizedBox(height: 14),
-            Divider(height: 1, color: Colors.grey[200]),
-            const SizedBox(height: 14),
-
-            // ─── Itens do pedido ────────────────────────────────────────
-            if (pedido.itens.isNotEmpty) ...[
-              ...pedido.itens.take(3).map((item) => _buildLinhaItem(item)),
-              if (pedido.itens.length > 3)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    '+ ${pedido.itens.length - 3} item(ns) a mais...',
-                    style: TextStyle(
-                      color: Colors.grey[500],
-                      fontSize: 12,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 14),
-              Divider(height: 1, color: Colors.grey[200]),
-              const SizedBox(height: 12),
-            ],
-
-            // ─── Total + Acções ─────────────────────────────────────────
-            Row(
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                        )),
+                    const SizedBox(height: 3),
                     Text(
-                      'Total',
+                      pedido.dataPedido != null
+                          ? _formatarData(pedido.dataPedido!)
+                          : '—',
                       style: TextStyle(color: Colors.grey[500], fontSize: 12),
                     ),
-                    Text(
-                      'MZN ${pedido.total.toStringAsFixed(2)}',
+                  ],
+                ),
+              ),
+              // ── Toggle de ativação ──
+              Transform.scale(
+                scale: 0.9,
+                child: Switch(
+                  value: pedido.ativo,
+                  onChanged: _operacaoEmAndamento
+                      ? null
+                      : (_) => _toggleAtivacao(pedido),
+                  activeColor: Colors.green,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 14),
+          Divider(height: 1, color: Colors.grey[200]),
+          const SizedBox(height: 14),
+
+          // ─── Itens com controlos ──────────────────────────────────
+          if (pedido.itens.isNotEmpty) ...[
+            ...pedido.itens.map((item) => _buildLinhaItemEditavel(pedido, item)),
+            const SizedBox(height: 14),
+            Divider(height: 1, color: Colors.grey[200]),
+            const SizedBox(height: 12),
+          ],
+
+          // ─── Total + Cancelar ─────────────────────────────────────
+          Row(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Total',
+                      style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+                  Text('MZN ${pedido.total.toStringAsFixed(2)}',
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: Colors.green,
-                      ),
-                    ),
-                  ],
+                      )),
+                ],
+              ),
+              // ── Botão Finalizar ──
+ElevatedButton.icon(
+  onPressed: _operacaoEmAndamento
+      ? null
+      : () => _abrirFinalizarPedido(pedido),
+  icon: const Icon(Icons.check, size: 16),
+  label: const Text('Finalizar'),
+  style: ElevatedButton.styleFrom(
+    backgroundColor: const Color(0xFF1A1A2E),
+    foregroundColor: Colors.white,
+    shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10)),
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+  ),
+),
+const SizedBox(width: 8),
+              const Spacer(),
+              OutlinedButton.icon(
+                onPressed: _operacaoEmAndamento
+                    ? null
+                    : () => _cancelarPedido(pedido),
+                icon: const Icon(Icons.close, size: 16),
+                label: const Text('Cancelar'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red,
+                  side: const BorderSide(color: Colors.red),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 ),
-                const Spacer(),
-
-                // Botão cancelar
-                OutlinedButton.icon(
-                  onPressed: () => _cancelarPedido(pedido),
-                  icon: const Icon(Icons.close, size: 16),
-                  label: const Text('Cancelar'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.red,
-                    side: const BorderSide(color: Colors.red),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 8),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildBadgeStatus() {
     return Container(
@@ -428,48 +624,152 @@ class _PedidosPorFinalizarScreenState
     );
   }
 
-  Widget _buildLinhaItem(ItemPedido item) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
-        children: [
-          Container(
-            width: 22,
-            height: 22,
+ Widget _buildLinhaItemEditavel(Pedido pedido, ItemPedido item) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 6),
+    child: Row(
+      children: [
+        // ── Botão diminuir ──
+        _botaoQuantidadePequeno(
+          icon: Icons.remove,
+          onTap: item.quantidade > 1 && !_operacaoEmAndamento
+              ? () => _editarQuantidade(pedido, item, item.quantidade - 1)
+              : null,
+        ),
+        const SizedBox(width: 8),
+
+        // ── Campo de quantidade editável ──
+        GestureDetector(
+          onTap: _operacaoEmAndamento
+              ? null
+              : () => _mostrarDialogoEditarQuantidade(pedido, item),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
               color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey[300]!),
             ),
-            child: Center(
-              child: Text(
-                '${item.quantidade}x',
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A1A2E),
-                ),
+            child: Text(
+              '${item.quantidade}x',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1A1A2E),
               ),
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              item.nomeProduto,
-              style: const TextStyle(fontSize: 13),
-              overflow: TextOverflow.ellipsis,
-            ),
+        ),
+        const SizedBox(width: 8),
+
+        // ── Botão aumentar ──
+        _botaoQuantidadePequeno(
+          icon: Icons.add,
+          onTap: !_operacaoEmAndamento
+              ? () => _editarQuantidade(pedido, item, item.quantidade + 1)
+              : null,
+        ),
+        const SizedBox(width: 12),
+
+        // ── Nome do produto ──
+        Expanded(
+          child: Text(
+            item.nomeProduto,
+            style: const TextStyle(fontSize: 13),
+            overflow: TextOverflow.ellipsis,
           ),
-          Text(
-            'MZN ${item.subtotal.toStringAsFixed(2)}',
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
+        ),
+        const SizedBox(width: 8),
+
+        // ── Subtotal ──
+        Text(
+          'MZN ${item.subtotal.toStringAsFixed(2)}',
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(width: 8),
+
+        // ── Botão eliminar ──
+        IconButton(
+          icon: const Icon(Icons.delete_outline, size: 18),
+          color: Colors.red,
+          onPressed:
+              _operacaoEmAndamento ? null : () => _eliminarItem(pedido, item),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _botaoQuantidadePequeno({required IconData icon, VoidCallback? onTap}) {
+  final habilitado = onTap != null;
+  return GestureDetector(
+    onTap: onTap,
+    child: Container(
+      width: 28,
+      height: 28,
+      decoration: BoxDecoration(
+        color: habilitado ? const Color(0xFF1A1A2E) : Colors.grey[300],
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Icon(icon,
+          size: 16, color: habilitado ? Colors.white : Colors.grey[500]),
+    ),
+  );
+}
+
+Future<void> _mostrarDialogoEditarQuantidade(
+    Pedido pedido, ItemPedido item) async {
+  final controller = TextEditingController(text: item.quantidade.toString());
+
+  final novaQtd = await showDialog<int>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Text('Editar Quantidade'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(item.nomeProduto,
+              style: const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: 'Quantidade',
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             ),
           ),
         ],
       ),
-    );
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            final qtd = int.tryParse(controller.text);
+            if (qtd != null && qtd > 0) {
+              Navigator.pop(ctx, qtd);
+            }
+          },
+          child: const Text('Confirmar'),
+        ),
+      ],
+    ),
+  );
+
+  if (novaQtd != null && novaQtd != item.quantidade) {
+    await _editarQuantidade(pedido, item, novaQtd);
   }
+}
 
   String _formatarData(DateTime data) {
     final agora = DateTime.now();

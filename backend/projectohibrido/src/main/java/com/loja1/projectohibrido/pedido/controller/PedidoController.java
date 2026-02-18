@@ -145,5 +145,30 @@ public ResponseEntity<Void> desativarPedido(
 
     pedidoService.desativarPedido(idPedido);
     return ResponseEntity.noContent().build();
+
+}
+
+// POST /api/pedidos/{idPedido}/finalizar
+@PostMapping("/{idPedido}/finalizar")
+public ResponseEntity<PedidoResponseDTO> finalizarPedido(
+        @PathVariable Integer idPedido,
+        @RequestBody FinalizarPedidoRequestDTO dto) {
+
+    PedidoResponseDTO response = pedidoService.finalizarPedido(idPedido, dto);
+    return ResponseEntity.ok(response);
+}
+
+@GetMapping("/tipos-entrega/{id}")
+public ResponseEntity<TipoEntregaResponseDTO> buscarTipoEntrega(
+        @PathVariable Integer id) {
+    return ResponseEntity.ok(pedidoService.buscarTipoEntrega(id));
+}
+
+@PostMapping("/{idPedido}/ativar")
+public ResponseEntity<PedidoResponseDTO> ativarPedido(
+        @PathVariable Integer idPedido) {
+
+    PedidoResponseDTO response = pedidoService.ativarPedido(idPedido);
+    return ResponseEntity.ok(response);
 }
 }

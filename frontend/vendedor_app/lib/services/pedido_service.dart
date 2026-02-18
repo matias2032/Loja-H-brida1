@@ -329,9 +329,105 @@ Future<void> desativarPedido(int idPedido) async {
     }
   }
 
+  Future<Pedido> ativarPedido(int idPedido) async {
+  print('🟢 [SERVICE] ativarPedido($idPedido) — chamando backend...');
+  try {
+    final response = await http
+        .post(
+          Uri.parse('${ApiConfig.pedidosUrl}/$idPedido/ativar'),
+          headers: ApiConfig.defaultHeaders,
+        )
+        .timeout(ApiConfig.timeout);
+
+    print('📥 [SERVICE] ativarPedido — status: ${response.statusCode}');
+    print('📥 [SERVICE] ativarPedido — body: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final pedido = Pedido.fromJson(json.decode(utf8.decode(response.bodyBytes)));
+      print('✅ [SERVICE] Pedido ativado: ${pedido.reference} | ativo: ${pedido.ativo}');
+      return pedido;
+    } else {
+      throw Exception('Erro ao ativar pedido: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('❌ [SERVICE] Erro em ativarPedido: $e');
+    rethrow;
+  }
+}
+
+Future<Pedido> finalizarPedido({
+  required int idPedido,
+  required int idTipoPagamento,
+  double? valorPago,
+  int? idTipoEntrega,
+  String? nomeCliente,
+  String? apelidoCliente,
+  String? enderecoJson,
+  String? bairro,
+  String? pontoReferencia,
+}) async {
+  final body = {
+    'idTipoPagamento': idTipoPagamento,
+    if (valorPago != null) 'valorPago': valorPago,
+    if (idTipoEntrega != null) 'idTipoEntrega': idTipoEntrega,
+    if (nomeCliente != null && nomeCliente.isNotEmpty) 'nomeCliente': nomeCliente,
+    if (apelidoCliente != null && apelidoCliente.isNotEmpty) 'apelidoCliente': apelidoCliente,
+    if (enderecoJson != null && enderecoJson.isNotEmpty) 'enderecoJson': enderecoJson,
+    if (bairro != null && bairro.isNotEmpty) 'bairro': bairro,
+    if (pontoReferencia != null && pontoReferencia.isNotEmpty) 'pontoReferencia': pontoReferencia,
+  };
+  print('📤 [SERVICE] Body: ${json.encode(body)}');
+
+  try {
+    final response = await http
+        .post(
+          Uri.parse('${ApiConfig.pedidosUrl}/$idPedido/finalizar'),
+          headers: ApiConfig.defaultHeaders,
+          body: json.encode(body),
+        )
+        .timeout(ApiConfig.timeout);
+
+    print('📥 [SERVICE] finalizarPedido — status: ${response.statusCode}');
+
+    if (response.statusCode == 200) {
+      final pedido = Pedido.fromJson(json.decode(utf8.decode(response.bodyBytes)));
+      print('✅ [SERVICE] Pedido finalizado: ${pedido.reference}');
+      return pedido;
+    } else {
+      throw Exception('Erro ao finalizar pedido: ${response.statusCode} — ${response.body}');
+    }
+  } catch (e) {
+    print('❌ [SERVICE] Erro em finalizarPedido: $e');
+    rethrow;
+  }
+}
+
   // ─── Listar pedidos "por finalizar" (atalho para a tela principal) ───────
 
   Future<List<Pedido>> listarPorFinalizar() async {
     return listarPorStatus('por finalizar');
   }
+
+  Future<Map<String, dynamic>> buscarTipoEntrega(int idTipoEntrega) async {
+  print('🚚 [SERVICE] buscarTipoEntrega($idTipoEntrega)');
+  try {
+    final response = await http
+        .get(
+          Uri.parse('${ApiConfig.baseUrl}/api/tipos-entrega/$idTipoEntrega'),
+          headers: ApiConfig.defaultHeaders,
+        )
+        .timeout(ApiConfig.timeout);
+
+    print('📥 [SERVICE] tipoEntrega — status: ${response.statusCode} | body: ${response.body}');
+
+    if (response.statusCode == 200) {
+      return json.decode(utf8.decode(response.bodyBytes));
+    } else {
+      throw Exception('Erro ao buscar tipo entrega: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('❌ [SERVICE] Erro em buscarTipoEntrega: $e');
+    rethrow;
+  }
+}
 }

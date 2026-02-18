@@ -28,4 +28,7 @@ public class PedidoResponseDTO {
     public BigDecimal troco;
     public List<ItemPedidoResponseDTO> itens;
     public Boolean ativo;
+    public BigDecimal valorPagoManual;
+    public String nomeCliente;
+    public String apelidoCliente;
 }
