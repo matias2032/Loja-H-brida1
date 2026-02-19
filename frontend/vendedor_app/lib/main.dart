@@ -11,6 +11,7 @@ import 'screens/produto_list_screen.dart';
 import 'screens/menu.dart';                         // ✅ NOVO
 import 'screens/detalhes_produto.dart';             // ✅ NOVO
 import 'screens/pedidos_por_finalizar.dart'; // ✅ NOVO
+import 'screens/movimento_estoque.dart';
 
 
 void main() {
@@ -108,6 +109,11 @@ class MyApp extends StatelessWidget {
               builder: (context) => const PedidosPorFinalizarScreen(),
             );
 
+case '/movimentos_estoque':
+  return MaterialPageRoute(
+    builder: (context) => const MovimentoEstoqueListScreen(),
+  );
+  
           // HOME
           case '/home':
             return MaterialPageRoute(
@@ -190,6 +196,13 @@ class HomeScreen extends StatelessWidget {
               color: Colors.amber[700]!,
               route: '/pedidos_por_finalizar',
             ),
+            _buildMenuCard(
+  context,
+  title: 'Movimentos',
+  icon: Icons.swap_vert_rounded,
+  color: Colors.cyan[700]!,
+  route: '/movimentos_estoque',
+),
             _buildMenuCard(
               context,
               title: 'Relatórios',

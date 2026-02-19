@@ -58,6 +58,7 @@ class ApiConfig {
   static const String pedidos = '/api/pedidos';
   static const String produtos = '/api/produtos';
   static const String carrinhos = '/api/carrinhos';
+   static const String movimentosEstoque = '/api/movimentos_estoque';
   
   
   // URLs completas
@@ -71,6 +72,7 @@ class ApiConfig {
   static String get pedidosUrl => '$baseUrl$pedidos';
   static String get produtosUrl => '$baseUrl$produtos';
   static String get carrinhosUrl => '$baseUrl$carrinhos';
+  static String get movimentosEstoqueUrl => '$baseUrl$movimentosEstoque';
   
   // =================================================================
   // ⚙️ CONFIGURAÇÕES ADICIONAIS

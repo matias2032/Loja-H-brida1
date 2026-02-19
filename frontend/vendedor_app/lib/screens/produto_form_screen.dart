@@ -13,6 +13,9 @@ import '../config/api_config.dart';
 import 'dart:ui';
 import 'package:cross_file/cross_file.dart';  
 import 'package:desktop_drop/desktop_drop.dart';  // ✅ NOVO
+import '../services/movimento_estoque_service.dart';
+import '../models/movimento_estoque_model.dart';
+
   
 
 class ProdutoFormScreen extends StatefulWidget {
@@ -32,6 +35,9 @@ class _ProdutoFormScreenState extends State<ProdutoFormScreen> {
   final ProdutoService _produtoService = ProdutoService();
   final MarcaService _marcaService = MarcaService();
   final CategoriaService _categoriaService = CategoriaService();
+  final MovimentoEstoqueService _movimentoService = MovimentoEstoqueService();
+// quantidadeEstoque original, capturado antes de qualquer edição
+int? _estoqueOriginal;
 // Variáveis para imagens
 List<ProdutoImagem> _imagensExistentes = [];
 List<File> _novasImagens = [];
@@ -90,6 +96,7 @@ if (widget.produto?.idProduto != null) {
       _marcasSelecionadas = List.from(widget.produto!.marcas);
       _categoriasSelecionadas = List.from(widget.produto!.categorias);
     }
+    _estoqueOriginal = widget.produto?.quantidadeEstoque;
   }
 
 
@@ -310,6 +317,32 @@ Future<void> _salvar() async {
         produto,
       );
       _mostrarSucesso('Produto atualizado com sucesso');
+
+      // ✅ Registrar movimento de estoque se a quantidade mudou
+if (widget.produto != null && _estoqueOriginal != null) {
+  final novaQtd = int.parse(_estoqueController.text);
+  if (novaQtd != _estoqueOriginal) {
+    final delta = novaQtd - _estoqueOriginal!;
+    final tipo = delta > 0 ? 'entrada' : 'saida';
+
+    print('📦 [Estoque] Quantidade alterada: $_estoqueOriginal → $novaQtd (delta=$delta)');
+
+    try {
+      await _movimentoService.registrar(MovimentoEstoque(
+        idProduto: produtoSalvo.idProduto!,
+        idUsuario: 1, // TODO: substituir pelo ID do usuário autenticado
+        tipoMovimento: 'ajuste',
+        quantidade: delta.abs(),
+        quantidadeAnterior: _estoqueOriginal!,
+        quantidadeNova: novaQtd,
+        motivo: 'Ajuste manual via formulário de produto',
+      ));
+    } catch (e) {
+      // Movimento falhou mas produto já foi salvo — logar e continuar
+      print('⚠️ [Estoque] Falha ao registrar movimento (produto salvo): $e');
+    }
+  }
+}
     }
 
     // ✅ UPLOAD DAS NOVAS IMAGENS
