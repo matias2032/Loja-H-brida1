@@ -355,53 +355,59 @@ Future<void> desativarPedido(int idPedido) async {
   }
 }
 
-Future<Pedido> finalizarPedido({
-  required int idPedido,
-  required int idTipoPagamento,
-  double? valorPago,
-  int? idTipoEntrega,
-  String? nomeCliente,
-  String? apelidoCliente,
-  String? enderecoJson,
-  String? bairro,
-  String? pontoReferencia,
-}) async {
-  final body = {
-    'idTipoPagamento': idTipoPagamento,
-    if (valorPago != null) 'valorPago': valorPago,
-    if (idTipoEntrega != null) 'idTipoEntrega': idTipoEntrega,
-    if (nomeCliente != null && nomeCliente.isNotEmpty) 'nomeCliente': nomeCliente,
-    if (apelidoCliente != null && apelidoCliente.isNotEmpty) 'apelidoCliente': apelidoCliente,
-    if (enderecoJson != null && enderecoJson.isNotEmpty) 'enderecoJson': enderecoJson,
-    if (bairro != null && bairro.isNotEmpty) 'bairro': bairro,
-    if (pontoReferencia != null && pontoReferencia.isNotEmpty) 'pontoReferencia': pontoReferencia,
-  };
-  print('📤 [SERVICE] Body: ${json.encode(body)}');
+// CORRIGIDO: parâmetro `telefone` adicionado à assinatura
+  Future<Pedido> finalizarPedido({
+    required int idPedido,
+    required int idTipoPagamento,
+    double? valorPago,
+    int? idTipoEntrega,
+    String? nomeCliente,
+    String? apelidoCliente,
+    String? telefone,        // ← ADICIONADO
+    String? enderecoJson,
+    String? bairro,
+    String? pontoReferencia,
+  }) async {
+    // CORRIGIDO: todos os campos enviados sempre (sem condicional isNotEmpty)
+    // para garantir que valores vazios/null cheguem ao backend e sejam gravados
+    final body = <String, dynamic>{
+      'idTipoPagamento': idTipoPagamento,
+      if (valorPago != null) 'valorPago': valorPago,
+      'idTipoEntrega':   idTipoEntrega,
+      'nomeCliente':     nomeCliente,
+      'apelidoCliente':  apelidoCliente,
+      'telefone':        telefone,        // ← ADICIONADO
+      'enderecoJson':    enderecoJson,
+      'bairro':          bairro,
+      'pontoReferencia': pontoReferencia,
+    };
 
-  try {
-    final response = await http
-        .post(
-          Uri.parse('${ApiConfig.pedidosUrl}/$idPedido/finalizar'),
-          headers: ApiConfig.defaultHeaders,
-          body: json.encode(body),
-        )
-        .timeout(ApiConfig.timeout);
+    print('📤 [SERVICE] finalizarPedido body: ${json.encode(body)}');
 
-    print('📥 [SERVICE] finalizarPedido — status: ${response.statusCode}');
+    try {
+      final response = await http
+          .post(
+            Uri.parse('${ApiConfig.pedidosUrl}/$idPedido/finalizar'),
+            headers: ApiConfig.defaultHeaders,
+            body: json.encode(body),
+          )
+          .timeout(ApiConfig.timeout);
 
-    if (response.statusCode == 200) {
-      final pedido = Pedido.fromJson(json.decode(utf8.decode(response.bodyBytes)));
-      print('✅ [SERVICE] Pedido finalizado: ${pedido.reference}');
-      return pedido;
-    } else {
-      throw Exception('Erro ao finalizar pedido: ${response.statusCode} — ${response.body}');
+      print('📥 [SERVICE] finalizarPedido — status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final pedido = Pedido.fromJson(json.decode(utf8.decode(response.bodyBytes)));
+        print('✅ Pedido finalizado: ${pedido.reference}');
+        return pedido;
+      } else {
+        throw Exception(
+            'Erro ao finalizar pedido: ${response.statusCode} — ${response.body}');
+      }
+    } catch (e) {
+      print('❌ Erro em finalizarPedido: $e');
+      rethrow;
     }
-  } catch (e) {
-    print('❌ [SERVICE] Erro em finalizarPedido: $e');
-    rethrow;
   }
-}
-
   // ─── Listar pedidos "por finalizar" (atalho para a tela principal) ───────
 
   Future<List<Pedido>> listarPorFinalizar() async {
@@ -413,7 +419,7 @@ Future<Pedido> finalizarPedido({
   try {
     final response = await http
         .get(
-          Uri.parse('${ApiConfig.baseUrl}/api/tipos-entrega/$idTipoEntrega'),
+          Uri.parse('${ApiConfig.pedidosUrl}/tipos-entrega/$idTipoEntrega'),
           headers: ApiConfig.defaultHeaders,
         )
         .timeout(ApiConfig.timeout);
@@ -430,4 +436,30 @@ Future<Pedido> finalizarPedido({
     rethrow;
   }
 }
+
+ // ADICIONADO: carrega todos os métodos de pagamento da BD
+  // GET /api/pedidos/tipos-pagamento
+  Future<List<Map<String, dynamic>>> listarTiposPagamento() async {
+    print('💳 [SERVICE] listarTiposPagamento()');
+    try {
+      final response = await http
+          .get(
+            Uri.parse('${ApiConfig.pedidosUrl}/tipos-pagamento'),
+            headers: ApiConfig.defaultHeaders,
+          )
+          .timeout(ApiConfig.timeout);
+
+      print('📥 Status: ${response.statusCode} | Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final List data = json.decode(utf8.decode(response.bodyBytes));
+        return data.cast<Map<String, dynamic>>();
+      } else {
+        throw Exception('Erro ao listar tipos pagamento: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Erro em listarTiposPagamento: $e');
+      rethrow;
+    }
+  }
 }

@@ -6,4 +6,5 @@ public class TipoEntregaResponseDTO {
     public Integer idTipoEntrega;
     public String nomeTipoEntrega;
     public BigDecimal precoAdicional;
+       
 }

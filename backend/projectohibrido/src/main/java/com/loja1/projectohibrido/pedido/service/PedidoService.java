@@ -29,6 +29,7 @@ public class PedidoService {
     private final PedidoCancelamentoRepository cancelamentoRepository;
     private final ProdutoRepository            produtoRepository;
     private final TipoEntregaRepository        tipoEntregaRepository;
+    private final TipoPagamentoRepository      tipoPagamentoRepository;
 
     // ─── Status permitidos para edição ───────────────────────────────────────
     private static final List<String> STATUS_EDITAVEIS = List.of(
@@ -59,7 +60,7 @@ public PedidoResponseDTO criarPedido(PedidoRequestDTO dto) {
                 .email(dto.email)
                 .idTipoPagamento(dto.idTipoPagamento)
                 .idTipoEntrega(dto.idTipoEntrega)
-                .idTipoOrigemPedido(dto.idTipoOrigemPedido)
+.idTipoOrigemPedido(dto.idTipoOrigemPedido != null ? dto.idTipoOrigemPedido : 2)
                 .dataPedido(LocalDateTime.now())
                 .statusPedido("por finalizar")
                  .ativo(true)          
@@ -92,16 +93,6 @@ public PedidoResponseDTO criarPedido(PedidoRequestDTO dto) {
         return toResponseDTO(pedido);
     }
 
-    @Transactional(readOnly = true)
-public TipoEntregaResponseDTO buscarTipoEntrega(Integer id) {
-    TipoEntrega te = tipoEntregaRepository.findById(id)
-        .orElseThrow(() -> new RuntimeException("TipoEntrega não encontrado: " + id));
-    TipoEntregaResponseDTO dto = new TipoEntregaResponseDTO();
-    dto.idTipoEntrega   = te.getIdTipoEntrega();
-    dto.nomeTipoEntrega = te.getNomeTipoEntrega();
-    dto.precoAdicional  = te.getPrecoAdicional();
-    return dto;
-}
 
     @Transactional(readOnly = true)
 public Optional<PedidoResponseDTO> buscarPedidoAtivo(Integer idUsuario) {
@@ -119,6 +110,30 @@ public void desativarPedido(Integer idPedido) {
     pedidoRepository.save(pedido);
     log.info("Pedido {} desactivado", pedido.getReference());
 }
+
+ @Transactional(readOnly = true)
+    public TipoEntregaResponseDTO buscarTipoEntrega(Integer id) {
+        TipoEntrega te = tipoEntregaRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("TipoEntrega não encontrado: " + id));
+        TipoEntregaResponseDTO dto = new TipoEntregaResponseDTO();
+        dto.idTipoEntrega   = te.getIdTipoEntrega();
+        dto.nomeTipoEntrega = te.getNomeTipoEntrega();
+        dto.precoAdicional  = te.getPrecoAdicional();
+        return dto;
+    }
+
+    // CORRIGIDO: tipoPagamentoRepository agora está injectado no topo da classe
+    @Transactional(readOnly = true)
+    public List<TipoPagamentoResponseDTO> listarTiposPagamento() {
+        return tipoPagamentoRepository.findAll().stream().map(t -> {
+            TipoPagamentoResponseDTO dto = new TipoPagamentoResponseDTO();
+            dto.idTipoPagamento = t.getIdTipoPagamento();
+            dto.tipoPagamento   = t.getTipoPagamento();
+            return dto;
+        }).collect(Collectors.toList());
+    }
+
+
 
     // ════════════════════════════════════════════════════════════════════════
     // b) ADICIONAR ITEM AO PEDIDO
@@ -209,84 +224,103 @@ public PedidoResponseDTO adicionarItem(Integer idPedido, ItemPedidoRequestDTO dt
         return toResponseDTO(pedido);
     }
 
+ @Transactional
+    public PedidoResponseDTO finalizarPedido(Integer idPedido, FinalizarPedidoRequestDTO dto) {
+        Pedido pedido = buscarPedidoComItens(idPedido);
+        log.info("[FINALIZAR] Pedido {} — início da finalização", pedido.getReference());
 
-@Transactional
-public PedidoResponseDTO finalizarPedido(Integer idPedido, FinalizarPedidoRequestDTO dto) {
-    Pedido pedido = buscarPedidoComItens(idPedido);
-    log.info("[FINALIZAR] Pedido {} — início da finalização", pedido.getReference());
-
-    if ("finalizado".equalsIgnoreCase(pedido.getStatusPedido()) ||
-        "cancelado".equalsIgnoreCase(pedido.getStatusPedido())) {
-        throw new StatusPedidoInvalidoException(pedido.getStatusPedido(), "finalização");
-    }
-
-    // ── 1. Tipo de pagamento ─────────────────────────────────────────────
-    pedido.setIdTipoPagamento(dto.idTipoPagamento);
-    log.info("[FINALIZAR] Pagamento: idTipoPagamento={}", dto.idTipoPagamento);
-
-    // ── 2. Troco (apenas dinheiro — idTipoPagamento == 1) ────────────────
-    BigDecimal totalFinal = pedido.getTotal();
-
-    if (dto.idTipoPagamento == 1) {
-        if (dto.valorPago == null || dto.valorPago.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Valor pago é obrigatório para pagamento em dinheiro");
+        if ("finalizado".equalsIgnoreCase(pedido.getStatusPedido()) ||
+            "cancelado".equalsIgnoreCase(pedido.getStatusPedido())) {
+            throw new StatusPedidoInvalidoException(pedido.getStatusPedido(), "finalização");
         }
-        pedido.setValorPagoManual(dto.valorPago);
-        BigDecimal troco = dto.valorPago.subtract(totalFinal);
-        pedido.setTroco(troco.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : troco);
-        log.info("[FINALIZAR] Dinheiro — pago: {} | troco: {}", dto.valorPago, pedido.getTroco());
-    } else {
-        pedido.setValorPagoManual(BigDecimal.ZERO);
-        pedido.setTroco(BigDecimal.ZERO);
-        log.info("[FINALIZAR] Pagamento sem troco (tipo {})", dto.idTipoPagamento);
+
+        // ── 1. Tipo de pagamento ─────────────────────────────────────────────
+        pedido.setIdTipoPagamento(dto.idTipoPagamento);
+
+        // ── 2. Troco / valor pago ────────────────────────────────────────────
+        BigDecimal totalFinal = pedido.getTotal();
+
+        if (dto.idTipoPagamento == 1) {
+            if (dto.valorPago == null || dto.valorPago.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException(
+                    "Valor pago é obrigatório para pagamento em dinheiro");
+            }
+            pedido.setValorPagoManual(dto.valorPago);
+            BigDecimal troco = dto.valorPago.subtract(totalFinal);
+            pedido.setTroco(troco.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : troco);
+            log.info("[FINALIZAR] Dinheiro — pago: {} | troco: {}", dto.valorPago, pedido.getTroco());
+        } else {
+            pedido.setValorPagoManual(BigDecimal.ZERO);
+            pedido.setTroco(BigDecimal.ZERO);
+            log.info("[FINALIZAR] Pagamento sem troco (tipo {})", dto.idTipoPagamento);
+        }
+
+        // ── 3. Entrega + dados do cliente ────────────────────────────────────
+        // CORRIGIDO: null tratado como Loja Física — retrocompatível com pedidos
+        // criados antes da correcção do default idTipoOrigemPedido = 2
+        boolean isLojaFisica = pedido.getIdTipoOrigemPedido() == null
+                || Integer.valueOf(2).equals(pedido.getIdTipoOrigemPedido());
+
+        log.info("[FINALIZAR] isLojaFisica={} (idTipoOrigemPedido={})",
+                isLojaFisica, pedido.getIdTipoOrigemPedido());
+
+        if (isLojaFisica) {
+            int idEntrega = dto.idTipoEntrega != null ? dto.idTipoEntrega : 1;
+            pedido.setIdTipoEntrega(idEntrega);
+            log.info("[FINALIZAR] idTipoEntrega definido: {}", idEntrega);
+
+            // Dados do cliente — gravados para balcão E delivery
+            pedido.setNomeCliente(
+                (dto.nomeCliente != null && !dto.nomeCliente.isBlank()) ? dto.nomeCliente : null);
+            pedido.setApelidoCliente(
+                (dto.apelidoCliente != null && !dto.apelidoCliente.isBlank()) ? dto.apelidoCliente : null);
+            if (dto.telefone != null && !dto.telefone.isBlank()) {
+                pedido.setTelefone(dto.telefone);
+            }
+            log.info("[FINALIZAR] Cliente gravado: nome={} | apelido={} | telefone={}",
+                    pedido.getNomeCliente(), pedido.getApelidoCliente(), pedido.getTelefone());
+
+            // Taxa de delivery e endereço — apenas quando delivery
+            if (idEntrega == 2) {
+                TipoEntrega tipoEntrega = tipoEntregaRepository.findById(idEntrega)
+                    .orElseThrow(() -> new RuntimeException("TipoEntrega não encontrado: " + idEntrega));
+
+                BigDecimal adicional = tipoEntrega.getPrecoAdicional() != null
+                    ? tipoEntrega.getPrecoAdicional() : BigDecimal.ZERO;
+
+                totalFinal = totalFinal.add(adicional);
+                pedido.setTotal(totalFinal);
+                log.info("[FINALIZAR] Delivery — adicional: {} | total final: {}", adicional, totalFinal);
+
+                if (dto.idTipoPagamento == 1 && dto.valorPago != null) {
+                    BigDecimal trocoAtualizado = dto.valorPago.subtract(totalFinal);
+                    pedido.setTroco(trocoAtualizado.compareTo(BigDecimal.ZERO) < 0
+                        ? BigDecimal.ZERO : trocoAtualizado);
+                    log.info("[FINALIZAR] Troco recalculado: {}", pedido.getTroco());
+                }
+
+                pedido.setEnderecoJson(dto.enderecoJson);
+                pedido.setBairro(
+                    (dto.bairro != null && !dto.bairro.isBlank()) ? dto.bairro : null);
+                pedido.setPontoReferencia(
+                    (dto.pontoReferencia != null && !dto.pontoReferencia.isBlank()) ? dto.pontoReferencia : null);
+                log.info("[FINALIZAR] Endereço — bairro={} | ref={}",
+                        pedido.getBairro(), pedido.getPontoReferencia());
+            }
+        }
+
+        // ── 4. Finalizar ─────────────────────────────────────────────────────
+        pedido.setStatusPedido("finalizado");
+        pedido.setAtivo(false);
+        pedido.setDataFinalizacao(LocalDateTime.now());
+        pedido.setDataFimPedido(LocalDateTime.now());
+        pedidoRepository.save(pedido);
+
+        log.info("[FINALIZAR] Pedido {} finalizado | total: {}",
+                pedido.getReference(), pedido.getTotal());
+
+        return toResponseDTO(pedido);
     }
-
-    // ── 3. Entrega (apenas Loja Física — idTipoOrigemPedido == 2) ────────
-    if (Integer.valueOf(2).equals(pedido.getIdTipoOrigemPedido())) {
-        int idEntrega = dto.idTipoEntrega != null ? dto.idTipoEntrega : 1;
-        pedido.setIdTipoEntrega(idEntrega);
-        log.info("[FINALIZAR] Loja Física — idTipoEntrega={}", idEntrega);
-
-if (idEntrega == 2) {
-    TipoEntrega tipoEntrega = tipoEntregaRepository.findById(idEntrega)
-        .orElseThrow(() -> new RuntimeException("TipoEntrega não encontrado: " + idEntrega));
-
-    BigDecimal adicional = tipoEntrega.getPrecoAdicional() != null
-        ? tipoEntrega.getPrecoAdicional() : BigDecimal.ZERO;
-
-    totalFinal = totalFinal.add(adicional);
-    pedido.setTotal(totalFinal);
-    log.info("[FINALIZAR] Delivery — adicional: {} | total final: {}", adicional, totalFinal);
-
-    // Recalcula troco com total atualizado (se dinheiro)
-    if (dto.idTipoPagamento == 1 && dto.valorPago != null) {
-        BigDecimal trocoAtualizado = dto.valorPago.subtract(totalFinal);
-        pedido.setTroco(trocoAtualizado.compareTo(BigDecimal.ZERO) < 0
-            ? BigDecimal.ZERO : trocoAtualizado);
-        log.info("[FINALIZAR] Troco recalculado após delivery: {}", pedido.getTroco());
-    }
-
-    pedido.setNomeCliente(dto.nomeCliente);
-    pedido.setApelidoCliente(dto.apelidoCliente);
-    pedido.setEnderecoJson(dto.enderecoJson);
-    pedido.setBairro(dto.bairro);
-    pedido.setPontoReferencia(dto.pontoReferencia);
-    log.info("[FINALIZAR] Cliente: {} {} | adicional vindo da BD: {}",
-             dto.nomeCliente, dto.apelidoCliente, adicional);
-}}
-
-    // ── 4. Finalizar ─────────────────────────────────────────────────────
-    pedido.setStatusPedido("finalizado");
-    pedido.setAtivo(false);
-    pedido.setDataFinalizacao(LocalDateTime.now());
-    pedido.setDataFimPedido(LocalDateTime.now());
-    pedidoRepository.save(pedido);
-
-    log.info("[FINALIZAR] Pedido {} finalizado com sucesso | total: {}", 
-             pedido.getReference(), pedido.getTotal());
-
-    return toResponseDTO(pedido);
-}
 
     // ════════════════════════════════════════════════════════════════════════
     // d) ELIMINAR ITEM DO PEDIDO
@@ -324,6 +358,8 @@ if (idEntrega == 2) {
         return toResponseDTO(pedido);
     }
 
+
+    
     // ════════════════════════════════════════════════════════════════════════
     // e) CANCELAR PEDIDO
     // ════════════════════════════════════════════════════════════════════════

@@ -159,19 +159,22 @@ valorPagoManual:  (json['valorPagoManual'] as num? ?? 0).toDouble(),
 
   // Para criação — body limpo enviado ao POST /api/pedidos
   Map<String, dynamic> toJsonCreate() {
-    return {
-      'idUsuario':          idUsuario,
-      'telefone':           telefone,
-      'email':              email,
-      'idTipoPagamento':    idTipoPagamento,
-      'idTipoEntrega':      idTipoEntrega,
-      'idTipoOrigemPedido': idTipoOrigemPedido,
-      'enderecoJson':       enderecoJson,
-      'bairro':             bairro,
-      'pontoReferencia':    pontoReferencia,
-      'itens':              itens.map((e) => e.toJson()).toList(),
-    };
-  }
+  return {
+    'idUsuario':          idUsuario,
+    'telefone':           telefone,
+    'email':              email,
+    'idTipoPagamento':    idTipoPagamento,
+    'idTipoEntrega':      idTipoEntrega,
+    'idTipoOrigemPedido': idTipoOrigemPedido ?? 2, // ← padrão: Loja Física
+    'enderecoJson':       enderecoJson,
+    'bairro':             bairro,
+    'pontoReferencia':    pontoReferencia,
+    'nomeCliente':        nomeCliente,
+    'apelidoCliente':     apelidoCliente,
+    'telefone':           telefone,
+    'itens':              itens.map((e) => e.toJson()).toList(),
+  };
+}
 
   // ─── Helpers de negócio ──────────────────────────────────────────────────
 

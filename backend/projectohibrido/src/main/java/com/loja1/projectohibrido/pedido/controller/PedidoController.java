@@ -164,6 +164,12 @@ public ResponseEntity<TipoEntregaResponseDTO> buscarTipoEntrega(
     return ResponseEntity.ok(pedidoService.buscarTipoEntrega(id));
 }
 
+// TipoEntregaController ou PedidoController
+@GetMapping("/tipos-pagamento")
+public ResponseEntity<List<TipoPagamentoResponseDTO>> listarTiposPagamento() {
+    return ResponseEntity.ok(pedidoService.listarTiposPagamento());
+}
+
 @PostMapping("/{idPedido}/ativar")
 public ResponseEntity<PedidoResponseDTO> ativarPedido(
         @PathVariable Integer idPedido) {

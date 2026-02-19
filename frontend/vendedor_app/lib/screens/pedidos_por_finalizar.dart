@@ -327,7 +327,10 @@ Future<void> _eliminarItem(Pedido pedido, ItemPedido item) async {
 }
 
 Future<void> _abrirFinalizarPedido(Pedido pedido) async {
-  print('🏁 [NAV] Abrindo finalizar pedido: ${pedido.reference}');
+  print('🏁 [NAV] Pedido: ${pedido.reference}');
+  print('🏁 [NAV] idTipoOrigemPedido: ${pedido.idTipoOrigemPedido}'); // ← confirma o valor
+  print('🏁 [NAV] idTipoEntrega: ${pedido.idTipoEntrega}');
+
   final finalizado = await Navigator.push<bool>(
     context,
     MaterialPageRoute(
