@@ -113,7 +113,7 @@ case '/movimentos_estoque':
   return MaterialPageRoute(
     builder: (context) => const MovimentoEstoqueListScreen(),
   );
-  
+
           // HOME
           case '/home':
             return MaterialPageRoute(
@@ -137,7 +137,34 @@ case '/movimentos_estoque':
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({Key? key}) : super(key: key);
+//  final ConnectivityService _connectivity = ConnectivityService();
+//   bool _online = true;
 
+//   @override
+//   void initState() {
+//     super.initState();
+//     _connectivity.statusStream.listen((online) {
+//       setState(() => _online = online);
+//       if (online) {
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           const SnackBar(
+//             content: Text('✅ Conexão restaurada'),
+//             backgroundColor: Color(0xFF4CAF82),
+//             duration: Duration(seconds: 2),
+//           ),
+//         );
+//       } else {
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           const SnackBar(
+//             content: Text('⚠️ Sem conexão com a internet'),
+//             backgroundColor: Color(0xFFEF5350),
+//             duration: Duration(days: 1), // persiste até voltar
+//           ),
+//         );
+//       }
+//     });
+//   }
+// }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
