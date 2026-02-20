@@ -10,11 +10,14 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
+  shared_preferences: ^2.2.3
     
   connectivity_plus: ^5.0.0
   cupertino_icons: ^1.0.8
   desktop_drop: ^0.4.4  
   cross_file: ^0.3.3+8  
+  fl_chart: ^1.1.1
 
   # Networking
   dio: ^5.4.0

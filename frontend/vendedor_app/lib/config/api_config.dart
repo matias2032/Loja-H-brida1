@@ -59,6 +59,8 @@ class ApiConfig {
   static const String produtos = '/api/produtos';
   static const String carrinhos = '/api/carrinhos';
    static const String movimentosEstoque = '/api/movimentos_estoque';
+   static const String dashboard = '/api/v1/dashboard';
+  
   
   
   // URLs completas
@@ -73,6 +75,8 @@ class ApiConfig {
   static String get produtosUrl => '$baseUrl$produtos';
   static String get carrinhosUrl => '$baseUrl$carrinhos';
   static String get movimentosEstoqueUrl => '$baseUrl$movimentosEstoque';
+  
+  static String get dashboardUrl => '$baseUrl$dashboard';
   
   // =================================================================
   // ⚙️ CONFIGURAÇÕES ADICIONAIS

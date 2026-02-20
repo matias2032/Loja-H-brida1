@@ -50,6 +50,9 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
             @Param("ativo") Integer ativo
     );
 
+    @Query("SELECT u FROM Usuario u WHERE u.email = :c OR u.telefone = :c OR u.apelido = :c")
+Optional<Usuario> findByEmailOrTelefoneOrApelido(@Param("c") String credencial);
+
     /**
      * Conta quantos usuários ativos existem
      */

@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,5 +34,31 @@ Optional<Pedido> findByIdUsuarioAndAtivoTrue(Integer idUsuario);
 @Modifying
 @Query("UPDATE Pedido p SET p.ativo = FALSE WHERE p.idUsuario = :idUsuario AND p.ativo = TRUE")
 int desativarPedidosDoUsuario(@Param("idUsuario") Integer idUsuario);
+
+// Evolução de vendas por dia
+@Query("""
+    SELECT CAST(p.dataPedido AS date) AS data, SUM(p.total) AS totalVendas
+    FROM Pedido p
+    WHERE p.dataPedido >= :dataInicio
+      AND p.statusPedido NOT IN ('cancelado', 'por finalizar')
+    GROUP BY CAST(p.dataPedido AS date)
+    ORDER BY CAST(p.dataPedido AS date)
+    """)
+List<Object[]> evolucaoVendasPorDia(@Param("dataInicio") LocalDateTime dataInicio);
+
+// Desempenho por usuário
+@Query("""
+    SELECT u.nome, u.apelido,
+           COUNT(p.idPedido), SUM(p.total),
+           COUNT(DISTINCT CAST(p.dataPedido AS date))
+    FROM Pedido p
+    JOIN Usuario u ON u.idUsuario = p.idUsuario
+    WHERE p.dataPedido >= :dataInicio
+      AND p.statusPedido NOT IN ('cancelado', 'por finalizar')
+    GROUP BY u.idUsuario, u.nome, u.apelido
+    ORDER BY SUM(p.total) DESC
+    """)
+List<Object[]> desempenhoUsuarios(@Param("dataInicio") LocalDateTime dataInicio);
+
 }
 
