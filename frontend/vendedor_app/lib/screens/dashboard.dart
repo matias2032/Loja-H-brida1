@@ -102,26 +102,30 @@ List<Map<String, dynamic>> _dadosMarca = [];
 
     try {
       // Todas as chamadas em paralelo para melhor performance
-      final resultados = await Future.wait([
-        _get('$_baseUrl/vendas-por-categoria?dataInicio=$dataInicio'),
-        _get('$_baseUrl/evolucao-vendas?dataInicio=$dataInicio'),
-        _get('$_baseUrl/top5-produtos?dataInicio=$dataInicio'),
-        _get('$_baseUrl/produtos-nao-vendidos?dataInicio=$dataInicio'),
-        if (_perfilUsuario == 1)
-          _get('$_baseUrl/desempenho-usuarios?dataInicio=$dataInicio'),
-          _get('$_baseUrl/vendas-por-marca?dataInicio=$dataInicio'),
-      ]);
+   // Separar as chamadas fixas das condicionais
+final futurosFixos = await Future.wait([
+  _get('$_baseUrl/vendas-por-categoria?dataInicio=$dataInicio'),   // [0]
+  _get('$_baseUrl/evolucao-vendas?dataInicio=$dataInicio'),        // [1]
+  _get('$_baseUrl/top5-produtos?dataInicio=$dataInicio'),          // [2]
+  _get('$_baseUrl/produtos-nao-vendidos?dataInicio=$dataInicio'),  // [3]
+  _get('$_baseUrl/vendas-por-marca?dataInicio=$dataInicio'),       // [4]
+]);
 
-      setState(() {
-        _dadosPizza = _parseList(resultados[0]);
-        _dadosBarra = _parseList(resultados[1]);
-        _top5Produtos = _parseList(resultados[2]);
-        _produtosNaoVendidos = _parseList(resultados[3]);
-        _desempenhoFuncionarios =
-            (_perfilUsuario == 1) ? _parseList(resultados[4]) : [];
-        _isLoading = false;
-        _dadosMarca = _parseList(resultados[5]); 
-      });
+String? desempenhoBody;
+if (_perfilUsuario == 1) {
+  desempenhoBody = await _get('$_baseUrl/desempenho-usuarios?dataInicio=$dataInicio');
+    debugPrint('🔍 desempenhoBody: $desempenhoBody'); 
+}
+
+setState(() {
+  _dadosPizza              = _parseList(futurosFixos[0]);
+  _dadosBarra              = _parseList(futurosFixos[1]);
+  _top5Produtos            = _parseList(futurosFixos[2]);
+  _produtosNaoVendidos     = _parseList(futurosFixos[3]);
+  _dadosMarca              = _parseList(futurosFixos[4]);
+  _desempenhoFuncionarios  = desempenhoBody != null ? _parseList(desempenhoBody) : [];
+  _isLoading = false;
+});
     } catch (e) {
       debugPrint('Erro ao carregar dashboard: $e');
       setState(() => _isLoading = false);

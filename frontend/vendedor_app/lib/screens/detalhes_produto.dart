@@ -7,6 +7,7 @@ import '../services/pedido_service.dart';
 import '../config/api_config.dart';
 import '../controllers/pedido_ativo_controller.dart';
 import '../widgets/pedido_ativo_banner.dart';
+import '../services/sessao_service.dart';
 
 class DetalhesProdutoScreen extends StatefulWidget {
   final Produto produto;
@@ -127,7 +128,7 @@ Future<void> _criarPedido() async {
     } else {
       // ── Cria um novo pedido ──────────────────────────────────────────
       final novoPedido = Pedido(
-        idUsuario: 1, // TODO: substituir pelo id do utilizador autenticado
+          idUsuario: SessaoService.instance.idUsuario!,   // TODO: substituir pelo id do utilizador autenticado
         idTipoPagamento: 1,
         statusPedido: 'por finalizar',
         itens: [

@@ -113,9 +113,10 @@ public class UsuarioService {
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com ID: " + id));
 
         // Validação: Não permitir atualizar para perfil Admin
-        if (request.getIdPerfil() == 1) {
-            throw new BusinessException("Não é permitido alterar usuário para perfil de Administrador");
-        }
+// DEPOIS
+if (request.getIdPerfil() == 1 && !usuario.getIdPerfil().equals(1)) {
+    throw new BusinessException("Não é permitido alterar usuário para perfil de Administrador");
+}
 
         // Validação: Email já existe em outro usuário?
         if (!usuario.getEmail().equals(request.getEmail()) 
