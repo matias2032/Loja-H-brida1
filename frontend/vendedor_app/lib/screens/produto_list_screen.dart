@@ -7,6 +7,7 @@ import '../services/marca_service.dart';
 import '../services/categoria_service.dart';
 import '../config/api_config.dart'; // ✅ ADICIONE este import
 import 'produto_form_screen.dart';
+import '../widgets/app_sidebar.dart'; // ✅ ADICIONE este import
 
 class ProdutoListScreen extends StatefulWidget {
   const ProdutoListScreen({Key? key}) : super(key: key);
@@ -120,6 +121,9 @@ class _ProdutoListScreenState extends State<ProdutoListScreen> {
           ),
         ],
       ),
+
+      drawer: const AppSidebar(currentRoute: '/produtos'),
+
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           final result = await Navigator.push(

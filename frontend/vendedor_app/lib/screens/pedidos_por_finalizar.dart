@@ -331,13 +331,15 @@ Future<void> _abrirFinalizarPedido(Pedido pedido) async {
   print('🏁 [NAV] idTipoOrigemPedido: ${pedido.idTipoOrigemPedido}'); // ← confirma o valor
   print('🏁 [NAV] idTipoEntrega: ${pedido.idTipoEntrega}');
 
-  final finalizado = await Navigator.push<bool>(
+ final finalizado = await Navigator.push<bool>(
     context,
     MaterialPageRoute(
       builder: (_) => FinalizarPedidoScreen(pedido: pedido),
     ),
   );
-  if (finalizado == true) {
+
+  // Verifique se o widget ainda está na árvore antes de recarregar ou limpar
+  if (finalizado == true && mounted) {
     print('✅ [NAV] Pedido finalizado — recarregando lista');
     PedidoAtivoController.instance.limpar();
     await _carregarPedidos();
@@ -545,39 +547,10 @@ Widget _buildCardPedido(Pedido pedido) {
             const SizedBox(height: 12),
           ],
 
-          // ─── Total + Cancelar ─────────────────────────────────────
+          // ─── Total + Ações ─────────────────────────────────────
           Row(
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Total',
-                      style: TextStyle(color: Colors.grey[500], fontSize: 12)),
-                  Text('MZN ${pedido.total.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
-                      )),
-                ],
-              ),
-              // ── Botão Finalizar ──
-ElevatedButton.icon(
-  onPressed: _operacaoEmAndamento
-      ? null
-      : () => _abrirFinalizarPedido(pedido),
-  icon: const Icon(Icons.check, size: 16),
-  label: const Text('Finalizar'),
-  style: ElevatedButton.styleFrom(
-    backgroundColor: const Color(0xFF1A1A2E),
-    foregroundColor: Colors.white,
-    shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10)),
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-  ),
-),
-const SizedBox(width: 8),
-              const Spacer(),
+              // Botão Cancelar (Ação secundária à esquerda)
               OutlinedButton.icon(
                 onPressed: _operacaoEmAndamento
                     ? null
@@ -589,8 +562,39 @@ const SizedBox(width: 8),
                   side: const BorderSide(color: Colors.red),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10)),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+              ),
+              const Spacer(),
+              // Grupo Total + Finalizar (Foco visual à direita)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text('Total',
+                      style: TextStyle(color: Colors.grey[500], fontSize: 11)),
+                  Text('MZN ${pedido.total.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      )),
+                ],
+              ),
+              const SizedBox(width: 12),
+              ElevatedButton.icon(
+                onPressed: _operacaoEmAndamento
+                    ? null
+                    : () => _abrirFinalizarPedido(pedido),
+                icon: const Icon(Icons.check, size: 18),
+                label: const Text('Finalizar', 
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1A1A2E),
+                  foregroundColor: Colors.white,
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 ),
               ),
             ],

@@ -163,19 +163,101 @@ class _FinalizarPedidoScreenState extends State<FinalizarPedidoScreen> {
         idTipoEntrega:   _idTipoEntrega,
         nomeCliente:     _nomeCtrl.text.trim(),
         apelidoCliente:  _apelidoCtrl.text.trim(),
-        telefone:        _telefoneCtrl.text.trim(), // ADICIONADO
+        telefone:        _telefoneCtrl.text.trim(),
         enderecoJson:    _enderecoCtrl.text.trim(),
         bairro:          _bairroCtrl.text.trim(),
         pontoReferencia: _referenciaCtrl.text.trim(),
       );
+
       print('✅ [FINALIZAR] Sucesso');
-      if (mounted) Navigator.pop(context, true);
+      
+      if (mounted) {
+        setState(() => _loading = false);
+        // Chamar o feedback de sucesso
+        _mostrarFeedbackSucesso();
+      }
     } catch (e) {
       print('❌ [FINALIZAR] Erro: $e');
-      _snack('Erro ao finalizar: $e', Colors.red);
+      if (mounted) {
+        setState(() => _loading = false);
+        _mostrarFeedbackErro(e.toString());
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+
+  void _mostrarFeedbackSucesso() {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Obriga o usuário a clicar no botão
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.check_circle_outline, color: Colors.green, size: 80),
+              const SizedBox(height: 16),
+              const Text(
+                'Pedido Finalizado!',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'O pedido ${widget.pedido.reference} foi processado com sucesso.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context); // Fecha o Dialog
+                    Navigator.pop(context, true); // Volta para a tela anterior
+                  },
+                  child: const Text('Ótimo', style: TextStyle(color: Colors.white)),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _mostrarFeedbackErro(String erro) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.red),
+              SizedBox(width: 10),
+              Text('Ops! Algo falhou'),
+            ],
+          ),
+          content: Text(
+            'Não foi possível finalizar o pedido. Verifique sua conexão ou tente novamente.\n\nDetalhe: $erro',
+            style: const TextStyle(fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Tentar Novamente', style: TextStyle(color: Color(0xFF1A1A2E))),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _snack(String msg, Color cor) {

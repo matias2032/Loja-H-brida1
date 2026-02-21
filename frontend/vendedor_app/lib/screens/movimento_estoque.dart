@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/movimento_estoque_model.dart';
 import '../services/movimento_estoque_service.dart';
+import '../widgets/app_sidebar.dart'; 
 
 // ─────────────────────────────────────────────
 // MODELO ENRIQUECIDO (adapte ao seu backend)
@@ -244,19 +245,24 @@ nomeUsuario: m.nomeUsuario ?? 'Usuário #${m.idUsuario}',
   // ─────────────────────────────────────────────
   // BUILD
   // ─────────────────────────────────────────────
-  @override
-  Widget build(BuildContext context) {
-    final stats = _estatisticas;
+ @override
+Widget build(BuildContext context) {
+  final stats = _estatisticas;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F1117),
-      body: Column(
+  return Scaffold(
+    backgroundColor: const Color(0xFF0F1117),
+    // Definindo a rota correta para marcar o item ativo na sidebar
+    drawer: const AppSidebar(currentRoute: 'movimentos_estoque'), 
+    
+    body: Builder(
+      builder: (context) => Column(
         children: [
-          _buildHeader(),
+          _buildHeader(context), // Passa o contexto do Builder para o header
           _buildFiltrosPeriodo(),
           _buildBarraBusca(),
           _buildFiltrosTipo(),
           _buildCards(stats),
+          
           Expanded(
             child: _isLoading
                 ? _buildLoading()
@@ -268,13 +274,11 @@ nomeUsuario: m.nomeUsuario ?? 'Usuário #${m.idUsuario}',
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
-  // ─────────────────────────────────────────────
-  // HEADER
-  // ─────────────────────────────────────────────
-  Widget _buildHeader() {
+Widget _buildHeader(BuildContext context) {
   return Container(
     padding: const EdgeInsets.fromLTRB(8, 48, 20, 16),
     decoration: const BoxDecoration(
@@ -286,15 +290,16 @@ nomeUsuario: m.nomeUsuario ?? 'Usuário #${m.idUsuario}',
     ),
     child: Row(
       children: [
-        // ── Botão voltar ──────────────────────
+        // Botão para abrir a Sidebar
         IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: Colors.white70, size: 20),
-          tooltip: 'Voltar',
+          icon: const Icon(Icons.menu, color: Colors.white),
+          onPressed: () => Scaffold.of(context).openDrawer(),
+          tooltip: 'Abrir Menu',
         ),
 
-        // ── Ícone decorativo ──────────────────
+        const SizedBox(width: 4),
+
+        // Ícone decorativo
         Container(
           width: 44,
           height: 44,
@@ -307,9 +312,10 @@ nomeUsuario: m.nomeUsuario ?? 'Usuário #${m.idUsuario}',
           child: const Icon(Icons.swap_vert_rounded,
               color: Colors.white, size: 24),
         ),
+
         const SizedBox(width: 14),
 
-        // ── Títulos ───────────────────────────
+        // Títulos
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -318,7 +324,7 @@ nomeUsuario: m.nomeUsuario ?? 'Usuário #${m.idUsuario}',
                 'Movimentos de Estoque',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 20,
+                  fontSize: 18, // Ajustado levemente para caber melhor com o menu
                   fontWeight: FontWeight.w700,
                   letterSpacing: -0.3,
                 ),
@@ -327,14 +333,14 @@ nomeUsuario: m.nomeUsuario ?? 'Usuário #${m.idUsuario}',
                 'Histórico completo de alterações',
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.45),
-                  fontSize: 13,
+                  fontSize: 12,
                 ),
               ),
             ],
           ),
         ),
 
-        // ── Botão atualizar ───────────────────
+        // Botão atualizar
         IconButton(
           onPressed: _carregarMovimentos,
           icon: const Icon(Icons.refresh_rounded, color: Colors.white60),
@@ -344,7 +350,6 @@ nomeUsuario: m.nomeUsuario ?? 'Usuário #${m.idUsuario}',
     ),
   );
 }
-
   // ─────────────────────────────────────────────
   // FILTROS DE PERÍODO (chips horizontais)
   // ─────────────────────────────────────────────

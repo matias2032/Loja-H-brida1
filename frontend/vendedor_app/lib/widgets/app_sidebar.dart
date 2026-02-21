@@ -175,6 +175,13 @@ class _AppSidebarState extends State<AppSidebar>
                     route: '/categorias',
                   ),
 
+                     if (_temPermissao('/marcas'))
+                  _buildMenuItem(
+                    icon: Icons.shopping_cart,
+                    title: 'Gerenciar Marcas',
+                    route: '/marcas',
+                  ),
+
                 // Gerenciar Produtos
                 // TODO: Reactivar usarBadge: true quando estoque_badge estiver validado
                 if (_temPermissao('/produtos'))

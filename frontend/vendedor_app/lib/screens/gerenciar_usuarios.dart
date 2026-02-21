@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-// import '../widgets/app_sidebar.dart';
+import '../widgets/app_sidebar.dart';
 // import '../widgets/theme_toggle_widget.dart';
 // import '../widgets/conectividade_indicator.dart';
 
@@ -348,7 +348,8 @@ class _UsuarioListScreenState extends State<UsuarioListScreen> {
         ],
       ),
 
-      /* drawer: const AppSidebar(currentRoute: '/gerenciar_usuarios'),*/
+
+      drawer: const AppSidebar(currentRoute: '/gerenciar_usuarios'),
       
       body: FutureBuilder<List<Usuario>>(
         future: _usuariosFuture,

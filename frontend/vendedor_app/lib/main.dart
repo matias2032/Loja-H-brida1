@@ -15,6 +15,8 @@ import 'screens/movimento_estoque.dart';
 import 'screens/tela_login.dart';
 import 'screens/primeira_troca_senha.dart';
 import 'screens/dashboard.dart';
+import 'screens/alterar_senha.dart';
+import 'screens/editar_usuario.dart';
 
 
 void main() {
@@ -60,6 +62,7 @@ class MyApp extends StatelessWidget {
           );
         }
 
+
         // ✅ Detalhes do Produto (recebe Produto como argumento)
         if (settings.name == '/detalhes_produto') {
           final args = settings.arguments as Map<String, dynamic>;
@@ -102,6 +105,17 @@ class MyApp extends StatelessWidget {
               builder: (context) => const UsuarioListScreen(),
             );
 
+            
+              case '/editar_usuario':
+                return MaterialPageRoute(
+                  builder: (_) => const EditarUsuarioScreen(),
+                );
+              
+              case '/alterar_senha':
+                return MaterialPageRoute(
+                  builder: (_) => const AlterarSenhaScreen(),
+                );
+
           // CATEGORIAS
           case '/categorias':
             return MaterialPageRoute(
@@ -119,6 +133,7 @@ class MyApp extends StatelessWidget {
             return MaterialPageRoute(
               builder: (context) => const ProdutoListScreen(),
             );
+
 
           // ✅ MENU — catálogo de produtos activos para criação de pedidos
           case '/menu':

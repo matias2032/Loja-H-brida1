@@ -6,7 +6,7 @@ import '../../models/categoria_model.dart';
 import '../../services/marca_service.dart';
 import '../../services/categoria_service.dart';
 import 'marca_form_screen.dart';
-
+import '../widgets/app_sidebar.dart';
 class MarcasListScreen extends StatefulWidget {
   const MarcasListScreen({Key? key}) : super(key: key);
 
@@ -164,6 +164,8 @@ Future<void> _carregarMarcas() async {
           ),
         ],
       ),
+     
+      drawer: const AppSidebar(currentRoute: '/marcas'),
       body: _buildBody(),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _navegarParaFormulario(),

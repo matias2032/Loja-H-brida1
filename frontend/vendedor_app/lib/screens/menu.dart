@@ -10,6 +10,7 @@ import 'detalhes_produto.dart';
 import '../controllers/pedido_ativo_controller.dart';
 import '../widgets/pedido_ativo_banner.dart';
 import '../models/pedido_model.dart';
+import  '../widgets/app_sidebar.dart';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({Key? key}) : super(key: key);
@@ -182,75 +183,132 @@ class _MenuScreenState extends State<MenuScreen> {
     return nomes.isEmpty ? 'Sem categoria' : nomes;
   }
 
-  @override
-  Widget build(BuildContext context) {
-     return Scaffold(
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
     backgroundColor: const Color(0xFFF8F9FA),
+    // Sidebar integrada corretamente
+    drawer: const AppSidebar(currentRoute: '/menu'),
     appBar: _buildAppBar(),
-    body: Stack(                          // ← NOVO
+    body: Stack(
       children: [
         _buildBody(),
-        PedidoAtivoBanner(               // ← NOVO
-          onDesativado: _carregarDados,  // refresh após desactivar
+        PedidoAtivoBanner(
+          onDesativado: _carregarDados, // refresh após desativar
         ),
       ],
     ),
   );
 }
-
-  PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      backgroundColor: Colors.white,
-      elevation: 0,
-      title: const Text(
-        'Menu',
-        style: TextStyle(
-          color: Color(0xFF1A1A2E),
-          fontWeight: FontWeight.bold,
-          fontSize: 22,
-        ),
+ PreferredSizeWidget _buildAppBar() {
+  return AppBar(
+    backgroundColor: Colors.white,
+    elevation: 0,
+    // Botão que abre a Sidebar (importante para integração)
+    leading: Builder(
+      builder: (context) => IconButton(
+        icon: const Icon(Icons.menu, color: Color(0xFF1A1A2E)),
+        onPressed: () => Scaffold.of(context).openDrawer(),
       ),
-      actions: [
-        // Badge de filtros activos
-        Stack(
-          alignment: Alignment.topRight,
-          children: [
-            IconButton(
-              icon: Icon(
-                _filtrosVisiveis ? Icons.filter_list_off : Icons.filter_list,
-                color: _temFiltrosActivos
-                    ? Theme.of(context).primaryColor
-                    : const Color(0xFF1A1A2E),
-              ),
-              onPressed: () =>
-                  setState(() => _filtrosVisiveis = !_filtrosVisiveis),
-              tooltip: 'Filtros',
-            ),
-            if (_temFiltrosActivos)
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 1.5),
+    ),
+    title: const Text(
+      'Menu',
+      style: TextStyle(
+        color: Color(0xFF1A1A2E),
+        fontWeight: FontWeight.bold,
+        fontSize: 22,
+      ),
+    ),
+   actions: [
+  // ── SEÇÃO DE PEDIDOS (Contador visual desativado temporariamente) ──
+  IconButton(
+    icon: const Icon(Icons.receipt_long, color: Color(0xFF1A1A2E)),
+    tooltip: 'Pedidos Por Finalizar',
+    onPressed: () async {
+      await Navigator.of(context).pushNamed('/pedidos_por_finalizar');
+      // _atualizarContadorPedidos(); // Método do contador comentado
+      if (mounted) setState(() {});
+    },
+  ),
+  /* // Lógica do contador visual preservada para o futuro:
+   // Lógica do contador visual comentada
+          if (_contadorPedidos > 0)
+            Positioned(
+              right: 8,
+              top: 8,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.red.withOpacity(0.5),
+                      blurRadius: 4,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+                constraints: const BoxConstraints(
+                  minWidth: 20,
+                  minHeight: 20,
+                ),
+                child: Center(
+                  child: Text(
+                    '$_contadorPedidos',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
-          ],
-        ),
-        IconButton(
-          icon: const Icon(Icons.refresh, color: Color(0xFF1A1A2E)),
-          onPressed: _carregarDados,
-          tooltip: 'Actualizar',
-        ),
-      ],
-    );
-  }
+            ),
+        ],
+      ),
+  */
 
+  // ── FILTROS (MANTIDO) ──
+  Stack(
+    alignment: Alignment.topRight,
+    children: [
+      IconButton(
+        icon: Icon(
+          _filtrosVisiveis ? Icons.filter_list_off : Icons.filter_list,
+          color: _temFiltrosActivos
+              ? Theme.of(context).primaryColor
+              : const Color(0xFF1A1A2E),
+        ),
+        onPressed: () => setState(() => _filtrosVisiveis = !_filtrosVisiveis),
+        tooltip: 'Filtros',
+      ),
+      if (_temFiltrosActivos)
+        Positioned(
+          top: 8,
+          right: 8,
+          child: Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: Colors.red,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 1.5),
+            ),
+          ),
+        ),
+    ],
+  ),
+
+  // ── ATUALIZAR (MANTIDO) ──
+  IconButton(
+    icon: const Icon(Icons.refresh, color: Color(0xFF1A1A2E)),
+    onPressed: _carregarDados,
+    tooltip: 'Actualizar',
+  ),
+],
+  );
+}
   Widget _buildBody() {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -555,11 +613,17 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
-  Widget _buildListaProdutos() {
+Widget _buildListaProdutos() {
     return RefreshIndicator(
       onRefresh: _carregarDados,
-      child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
+      child: GridView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 4, // 4 cartões por linha
+          childAspectRatio: 0.82, // Proporção ajustada (largura/altura). Se achar muito alto, aumente para 0.85
+          crossAxisSpacing: 16, // Espaço horizontal
+          mainAxisSpacing: 16, // Espaço vertical
+        ),
         itemCount: _produtosFiltrados.length,
         itemBuilder: (context, index) {
           return _buildProdutoCard(_produtosFiltrados[index]);
@@ -568,157 +632,107 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
-  Widget _buildProdutoCard(Produto produto) {
+Widget _buildProdutoCard(Produto produto) {
     final precoEfetivo = produto.precoPromocional ?? produto.preco;
     final semEstoque = produto.quantidadeEstoque == 0;
-    final estoqueAbaixo = produto.quantidadeEstoque <= 5 && !semEstoque;
 
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      elevation: 1.5,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), // Borda um pouco mais suave
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-    // DEPOIS:
-onTap: semEstoque
-    ? null
-    : () async {
-        final resultado = await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => DetalhesProdutoScreen(
-              produto: produto,
-              marcas: _marcas,
-              categorias: _categorias,
-            ),
-          ),
-        );
-        if (resultado is Pedido) {
-          // Pedido novo criado — actualiza o controller
-          PedidoAtivoController.instance.definir(resultado);
-          await _carregarDados();
-        } else if (resultado == true) {
-          await _carregarDados();
-        }
-      },
+        onTap: semEstoque
+            ? null
+            : () async {
+                final resultado = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => DetalhesProdutoScreen(
+                      produto: produto,
+                      marcas: _marcas,
+                      categorias: _categorias,
+                    ),
+                  ),
+                );
+                if (resultado is Pedido) {
+                  PedidoAtivoController.instance.definir(resultado);
+                  await _carregarDados();
+                } else if (resultado == true) {
+                  await _carregarDados();
+                }
+              },
         child: Opacity(
           opacity: semEstoque ? 0.55 : 1.0,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Imagem
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: _buildProdutoImagem(produto),
-                ),
-                const SizedBox(width: 12),
-
-                // Informações
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        produto.nomeProduto,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF1A1A2E),
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(Icons.label_outline,
-                              size: 13, color: Colors.grey[500]),
-                          const SizedBox(width: 3),
-                          Expanded(
-                            child: Text(
-                              _obterNomesMarcas(produto.marcas),
-                              style: TextStyle(
-                                  fontSize: 12, color: Colors.grey[600]),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Icon(Icons.category_outlined,
-                              size: 13, color: Colors.grey[500]),
-                          const SizedBox(width: 3),
-                          Expanded(
-                            child: Text(
-                              _obterNomesCategorias(produto.categorias),
-                              style: TextStyle(
-                                  fontSize: 12, color: Colors.grey[600]),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          // Preço
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (produto.precoPromocional != null)
-                                Text(
-                                  'MZN ${produto.preco.toStringAsFixed(2)}',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey[500],
-                                    decoration: TextDecoration.lineThrough,
-                                  ),
-                                ),
-                              Text(
-                                'MZN ${precoEfetivo.toStringAsFixed(2)}',
-                                style: TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.bold,
-                                  color: produto.precoPromocional != null
-                                      ? Colors.red[600]
-                                      : Colors.green[700],
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          // Badge de estoque
-                          _buildEstoqueBadge(produto),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Chevron
-                if (!semEstoque)
-                  const Padding(
-                    padding: EdgeInsets.only(left: 4, top: 4),
-                    child: Icon(Icons.chevron_right,
-                        color: Colors.grey, size: 20),
-                  ),
-              ],
+          child: Column(
+  crossAxisAlignment: CrossAxisAlignment.start,
+  mainAxisSize: MainAxisSize.min,
+  children: [
+    // 1. Imagem
+    Expanded(
+      child: SizedBox(
+        width: double.infinity,
+        child: _buildProdutoImagem(produto),
+      ),
+    ),
+    
+    // 2. Detalhes com Marca e Categoria
+    Padding(
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 10), // Aumentei levemente o padding lateral
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Marca e Categoria (Texto secundário)
+          Text(
+            '${_obterNomesMarcas(produto.marcas)} • ${_obterNomesCategorias(produto.categorias)}',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[400], // Cor suave para não brigar com o nome
+              letterSpacing: 0.3,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4), // Espaço entre categoria e nome
+          
+          // Nome do Produto
+          Text(
+            produto.nomeProduto,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          
+          const SizedBox(height: 6), // Espaço para o preço respirar
+          
+          // Preço
+          Text(
+            'MZN ${precoEfetivo.toStringAsFixed(2)}',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w900,
+              color: Colors.greenAccent[400],
             ),
           ),
+          
+          const SizedBox(height: 8),
+          
+          // Badge de Estoque
+          _buildEstoqueBadge(produto),
+        ],
+      ),
+    ),
+  ],
+),
         ),
       ),
     );
   }
 
-  Widget _buildEstoqueBadge(Produto produto) {
+Widget _buildEstoqueBadge(Produto produto) {
     Color bgColor, borderColor, textColor;
     String label;
     IconData icon;
@@ -739,26 +753,26 @@ onTap: semEstoque
       bgColor = Colors.green[50]!;
       borderColor = Colors.green;
       textColor = Colors.green[700]!;
-      label = 'Estoque: ${produto.quantidadeEstoque}';
+      label = 'Estq: ${produto.quantidadeEstoque}'; // Abreviação para "Estoque"
       icon = Icons.check_circle_outline;
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), // Padding menor
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor, width: 1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor, width: 0.5),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: textColor),
+          Icon(icon, size: 10, color: textColor), // Ícone menor
           const SizedBox(width: 4),
           Text(
             label,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 9, // Fonte bem pequena para garantir que cabe na largura
               fontWeight: FontWeight.bold,
               color: textColor,
             ),
@@ -768,7 +782,7 @@ onTap: semEstoque
     );
   }
 
-  Widget _buildProdutoImagem(Produto produto) {
+Widget _buildProdutoImagem(Produto produto) {
     if (produto.imagemPrincipalUrl == null ||
         produto.imagemPrincipalUrl!.isEmpty) {
       return _buildPlaceholderImage();
@@ -778,14 +792,10 @@ onTap: semEstoque
 
     return Image.network(
       urlCompleta,
-      width: 80,
-      height: 80,
-      fit: BoxFit.cover,
+      fit: BoxFit.cover, // Garante que a imagem preencha todo o topo do cartão
       loadingBuilder: (context, child, loadingProgress) {
         if (loadingProgress == null) return child;
         return Container(
-          width: 80,
-          height: 80,
           color: Colors.grey[200],
           child: const Center(
             child: CircularProgressIndicator(strokeWidth: 2),
@@ -798,11 +808,9 @@ onTap: semEstoque
 
   Widget _buildPlaceholderImage() {
     return Container(
-      width: 80,
-      height: 80,
       color: Colors.grey[200],
       child: Icon(Icons.image_not_supported,
-          size: 30, color: Colors.grey[400]),
+          size: 40, color: Colors.grey[400]),
     );
   }
 }
