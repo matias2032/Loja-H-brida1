@@ -5,13 +5,15 @@ import 'dart:async';
 import '../services/sessao_service.dart';
 
 // TODO: Descomentar quando pedido_contador_service for migrado para Spring Boot
-// import '../services/pedido_contador_service.dart';
+import '../services/pedido_contador_service.dart';
+
+import '../services/estoque_alerta_service.dart';
 
 // TODO: Descomentar quando servico_logs for migrado para Spring Boot
 // import '../services/servico_logs.dart';
 
 // TODO: Descomentar quando estoque_badge for migrado/validado
-// import '../widgets/estoque_badge.dart';
+import '../widgets/estoque_badge.dart';
 
 class AppSidebar extends StatefulWidget {
   final String currentRoute;
@@ -32,9 +34,9 @@ class _AppSidebarState extends State<AppSidebar>
   late Animation<double> _rotationAnimation;
 
   // TODO: Reactivar quando pedido_contador_service estiver migrado
-  // int _contadorPedidos = 0;
-  // StreamSubscription<int>? _contadorSubscription;
-  // final PedidoContadorService _contadorService = PedidoContadorService.instance;
+  int _contadorPedidos = 0;
+  StreamSubscription<int>? _contadorSubscription;
+  final PedidoContadorService _contadorService = PedidoContadorService.instance;
 
   @override
   void initState() {
@@ -44,6 +46,7 @@ class _AppSidebarState extends State<AppSidebar>
       vsync: this,
       duration: const Duration(milliseconds: 200),
     );
+    EstoqueAlertaService.instance.inicializar();
     _rotationAnimation = Tween<double>(begin: 0, end: 0.5).animate(
       CurvedAnimation(
         parent: _animationController,
@@ -52,31 +55,31 @@ class _AppSidebarState extends State<AppSidebar>
     );
 
     // TODO: Reactivar quando pedido_contador_service estiver migrado
-    // _carregarContadorDoUsuario();
-    // _contadorPedidos = _contadorService.contadorAtual;
-    // _contadorSubscription = _contadorService.contadorStream.listen((novoValor) {
-    //   if (mounted) {
-    //     setState(() {
-    //       _contadorPedidos = novoValor;
-    //     });
-    //   }
-    // });
+    _carregarContadorDoUsuario();
+    _contadorPedidos = _contadorService.contadorAtual;
+    _contadorSubscription = _contadorService.contadorStream.listen((novoValor) {
+      if (mounted) {
+        setState(() {
+          _contadorPedidos = novoValor;
+        });
+      }
+    });
   }
 
   // TODO: Reactivar quando pedido_contador_service estiver migrado
-  // Future<void> _carregarContadorDoUsuario() async {
-  //   final usuario = SessaoService.instance.usuarioAtual;
-  //   if (usuario != null) {
-  //     await _contadorService.recarregarSeNecessario();
-  //   }
-  // }
+  Future<void> _carregarContadorDoUsuario() async {
+    final usuario = SessaoService.instance.usuarioAtual;
+    if (usuario != null) {
+      await _contadorService.recarregarSeNecessario();
+    }
+  }
 
   @override
   void dispose() {
     _animationController.dispose();
 
     // TODO: Reactivar quando pedido_contador_service estiver migrado
-    // _contadorSubscription?.cancel();
+    _contadorSubscription?.cancel();
 
     super.dispose();
   }
@@ -154,19 +157,19 @@ class _AppSidebarState extends State<AppSidebar>
                 // TODO: Substituir _buildMenuItem por _buildMenuItemComContador
                 //       quando pedido_contador_service estiver migrado:
                 //
-                // if (_temPermissao('/menu'))
-                //   _buildMenuItemComContador(
-                //     icon: Icons.shopping_cart,
-                //     title: 'Criar Pedido',
-                //     route: '/menu',
-                //     contador: _contadorPedidos,
-                //   ),
                 if (_temPermissao('/menu'))
-                  _buildMenuItem(
+                  _buildMenuItemComContador(
                     icon: Icons.shopping_cart,
                     title: 'Criar Pedido',
                     route: '/menu',
+                    contador: _contadorPedidos,
                   ),
+                // if (_temPermissao('/menu'))
+                //   _buildMenuItem(
+                //     icon: Icons.shopping_cart,
+                //     title: 'Criar Pedido',
+                //     route: '/menu',
+                //   ),
 
                 if (_temPermissao('/categorias'))
                   _buildMenuItem(
@@ -184,13 +187,13 @@ class _AppSidebarState extends State<AppSidebar>
 
                 // Gerenciar Produtos
                 // TODO: Reactivar usarBadge: true quando estoque_badge estiver validado
-                if (_temPermissao('/produtos'))
-                  _buildMenuItem(
-                    icon: Icons.fastfood,
-                    title: 'Gerenciar Produtos',
-                    route: '/produtos',
-                    // usarBadge: true,
-                  ),
+             if (_temPermissao('/produtos'))
+  _buildMenuItem(
+    icon: Icons.fastfood,
+    title: 'Gerenciar Produtos',
+    route: '/produtos',
+    usarBadge: true,
+  ),
 
                 if (_temPermissao('/gerenciar_usuarios'))
                   _buildMenuItem(
@@ -296,7 +299,7 @@ class _AppSidebarState extends State<AppSidebar>
     required String title,
     required String route,
     // TODO: Reactivar quando estoque_badge estiver validado
-    // bool usarBadge = false,
+    bool usarBadge = false,
   }) {
     final isSelected = widget.currentRoute == route;
 
@@ -306,9 +309,9 @@ class _AppSidebarState extends State<AppSidebar>
     );
 
     // TODO: Reactivar quando estoque_badge estiver validado
-    // if (usarBadge) {
-    //   iconWidget = EstoqueBadge(child: iconWidget);
-    // }
+    if (usarBadge) {
+      iconWidget = EstoqueBadge(child: iconWidget);
+    }
 
     return ListTile(
       leading: iconWidget,
@@ -336,67 +339,67 @@ class _AppSidebarState extends State<AppSidebar>
   // TODO: Reactivar este método completo quando pedido_contador_service
   //       estiver migrado para Spring Boot
   //
-  // Widget _buildMenuItemComContador({
-  //   required IconData icon,
-  //   required String title,
-  //   required String route,
-  //   required int contador,
-  // }) {
-  //   final isSelected = widget.currentRoute == route;
-  //
-  //   return ListTile(
-  //     leading: Icon(
-  //       icon,
-  //       color: isSelected ? Colors.deepOrange : Colors.grey[700],
-  //     ),
-  //     title: Row(
-  //       children: [
-  //         Expanded(
-  //           child: Text(
-  //             title,
-  //             style: TextStyle(
-  //               color: isSelected ? Colors.deepOrange : Colors.black87,
-  //               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-  //             ),
-  //           ),
-  //         ),
-  //         if (contador > 0)
-  //           AnimatedContainer(
-  //             duration: const Duration(milliseconds: 300),
-  //             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-  //             decoration: BoxDecoration(
-  //               color: Colors.red,
-  //               borderRadius: BorderRadius.circular(12),
-  //               boxShadow: [
-  //                 BoxShadow(
-  //                   color: Colors.red.withOpacity(0.4),
-  //                   blurRadius: 4,
-  //                   spreadRadius: 1,
-  //                 ),
-  //               ],
-  //             ),
-  //             child: Text(
-  //               '$contador',
-  //               style: const TextStyle(
-  //                 color: Colors.white,
-  //                 fontSize: 12,
-  //                 fontWeight: FontWeight.bold,
-  //               ),
-  //             ),
-  //           ),
-  //       ],
-  //     ),
-  //     selected: isSelected,
-  //     selectedTileColor: Colors.deepOrange.withOpacity(0.1),
-  //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-  //     onTap: () {
-  //       Navigator.pop(context);
-  //       if (!isSelected) {
-  //         Navigator.pushReplacementNamed(context, route);
-  //       }
-  //     },
-  //   );
-  // }
+  Widget _buildMenuItemComContador({
+    required IconData icon,
+    required String title,
+    required String route,
+    required int contador,
+  }) {
+    final isSelected = widget.currentRoute == route;
+  
+    return ListTile(
+      leading: Icon(
+        icon,
+        color: isSelected ? Colors.deepOrange : Colors.grey[700],
+      ),
+      title: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                color: isSelected ? Colors.deepOrange : Colors.black87,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ),
+          if (contador > 0)
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.red,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.red.withOpacity(0.4),
+                    blurRadius: 4,
+                    spreadRadius: 1,
+                  ),
+                ],
+              ),
+              child: Text(
+                '$contador',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+        ],
+      ),
+      selected: isSelected,
+      selectedTileColor: Colors.deepOrange.withOpacity(0.1),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      onTap: () {
+        Navigator.pop(context);
+        if (!isSelected) {
+          Navigator.pushReplacementNamed(context, route);
+        }
+      },
+    );
+  }
 
   Widget _buildUserSection(usuario) {
     return Container(
@@ -581,7 +584,7 @@ class _AppSidebarState extends State<AppSidebar>
       // }
 
       // TODO: Reactivar quando pedido_contador_service estiver migrado
-      // _contadorService.resetar();
+      _contadorService.resetar();
 
       SessaoService.instance.limparSessao();
       Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);

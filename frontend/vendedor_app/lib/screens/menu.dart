@@ -11,6 +11,8 @@ import '../controllers/pedido_ativo_controller.dart';
 import '../widgets/pedido_ativo_banner.dart';
 import '../models/pedido_model.dart';
 import  '../widgets/app_sidebar.dart';
+import '../widgets/estoque_alerta_popup.dart';
+import '../services/pedido_contador_service.dart';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({Key? key}) : super(key: key);
@@ -41,6 +43,7 @@ class _MenuScreenState extends State<MenuScreen> {
   bool _isLoading = true;
   String? _errorMessage;
   bool _filtrosVisiveis = false;
+final PedidoContadorService _contadorService = PedidoContadorService.instance;
 
   @override
   void initState() {
@@ -48,6 +51,9 @@ class _MenuScreenState extends State<MenuScreen> {
     _carregarDados();
     _searchController.addListener(_aplicarFiltros);
     PedidoAtivoController.instance.carregar(1);
+   // Invalida cache para forçar leitura fresca ao entrar no ecrã
+_contadorService.invalidarCache();
+_contadorService.recarregarSeNecessario();
   }
 
   @override
@@ -82,6 +88,8 @@ class _MenuScreenState extends State<MenuScreen> {
       });
 
       _aplicarFiltros();
+    _contadorService.invalidarCache();
+_contadorService.recarregarSeNecessario();
     } catch (e) {
       setState(() {
         _errorMessage = e.toString();
@@ -194,8 +202,10 @@ Widget build(BuildContext context) {
       children: [
         _buildBody(),
         PedidoAtivoBanner(
-          onDesativado: _carregarDados, // refresh após desativar
+          onDesativado: _carregarDados,
+           // refresh após desativar
         ),
+        const EstoqueAlertaPopup(),
       ],
     ),
   );
@@ -220,54 +230,59 @@ Widget build(BuildContext context) {
       ),
     ),
    actions: [
-  // ── SEÇÃO DE PEDIDOS (Contador visual desativado temporariamente) ──
-  IconButton(
-    icon: const Icon(Icons.receipt_long, color: Color(0xFF1A1A2E)),
-    tooltip: 'Pedidos Por Finalizar',
-    onPressed: () async {
-      await Navigator.of(context).pushNamed('/pedidos_por_finalizar');
-      // _atualizarContadorPedidos(); // Método do contador comentado
-      if (mounted) setState(() {});
-    },
-  ),
-  /* // Lógica do contador visual preservada para o futuro:
-   // Lógica do contador visual comentada
-          if (_contadorPedidos > 0)
-            Positioned(
-              right: 8,
-              top: 8,
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.red,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.red.withOpacity(0.5),
-                      blurRadius: 4,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                ),
-                constraints: const BoxConstraints(
-                  minWidth: 20,
-                  minHeight: 20,
-                ),
-                child: Center(
-                  child: Text(
-                    '$_contadorPedidos',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
+
+// Substituir todo o Stack do ícone de pedidos por:
+StreamBuilder<int>(
+  stream: _contadorService.contadorStream,
+  initialData: _contadorService.contadorAtual,
+  builder: (context, snapshot) {
+    final contador = snapshot.data ?? 0;
+    return Stack(
+      alignment: Alignment.topRight,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.receipt_long, color: Color(0xFF1A1A2E)),
+          tooltip: 'Pedidos Por Finalizar',
+          onPressed: () async {
+            await Navigator.of(context).pushNamed('/pedidos_por_finalizar');
+            _contadorService.invalidarCache();
+            await _contadorService.recarregarSeNecessario();
+          },
+        ),
+        if (contador > 0)
+          Positioned(
+            right: 6,
+            top: 6,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.red,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.red.withOpacity(0.5),
+                    blurRadius: 4,
+                    spreadRadius: 1,
+                  ),
+                ],
+              ),
+              constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+              child: Center(
+                child: Text(
+                  '$contador',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
             ),
-        ],
-      ),
-  */
+          ),
+      ],
+    );
+  },
+),
 
   // ── FILTROS (MANTIDO) ──
   Stack(
