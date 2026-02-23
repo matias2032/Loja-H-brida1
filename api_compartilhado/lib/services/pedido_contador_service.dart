@@ -3,8 +3,9 @@
 import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import '../config/api_config.dart';
 import 'sessao_service.dart';
+import 'package:api_compartilhado/api_config.dart';
+
 
 /// Service global para gerenciar o contador de pedidos "por finalizar"
 /// Consulta o backend Java em vez do banco local.

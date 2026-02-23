@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../../../config/api_config.dart';
 import '../models/movimento_estoque_model.dart';
+import 'package:api_compartilhado/api_config.dart';
+
 
 class MovimentoEstoqueService {
   // ✅ getter em vez de const — compatível com ApiConfig.baseUrl

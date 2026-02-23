@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../config/api_config.dart';
 import '../models/produto_model.dart';
 import 'dart:io';
 import 'package:http_parser/http_parser.dart';
 import '../models/produto_imagem_model.dart';
+import 'package:api_compartilhado/api_config.dart';
 
 
 class ProdutoService {

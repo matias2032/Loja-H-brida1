@@ -1,6 +1,8 @@
 package com.loja1.projectohibrido.pedido.service;
 
 
+import com.loja1.projectohibrido.carrinho.entity.Carrinho;
+import com.loja1.projectohibrido.carrinho.entity.ItemCarrinho;
 import com.loja1.projectohibrido.pedido.dto.*;
 import com.loja1.projectohibrido.pedido.entity.*;
 import com.loja1.projectohibrido.pedido.exception.*;
@@ -601,4 +603,78 @@ public PedidoResponseDTO ativarPedido(Integer idPedido) {
         dto.subtotal      = item.getSubtotal();
         return dto;
     }
+
+
+@Transactional
+public PedidoResponseDTO criarPedidoAPartirDoCarrinho(
+        PedidoRequestDTO pedidoReq,
+        Carrinho carrinho) {
+
+    log.info("Convertendo carrinho {} em pedido para utilizador {}",
+             carrinho.getIdCarrinho(), pedidoReq.idUsuario);
+
+    // 1. Desactiva qualquer pedido activo anterior do utilizador
+    pedidoRepository.desativarPedidosDoUsuario(pedidoReq.idUsuario);
+
+    // 2. Cria o cabeçalho do pedido
+    Pedido pedido = Pedido.builder()
+            .reference(gerarReference())
+            .idUsuario(pedidoReq.idUsuario)
+            .telefone(pedidoReq.telefone)
+            .email(pedidoReq.email)
+            .idTipoPagamento(pedidoReq.idTipoPagamento)
+            .idTipoEntrega(pedidoReq.idTipoEntrega)
+            .idTipoOrigemPedido(pedidoReq.idTipoOrigemPedido != null
+                    ? pedidoReq.idTipoOrigemPedido : 1) // 1 = online/loja virtual
+            .dataPedido(LocalDateTime.now())
+            .statusPedido("por finalizar")
+            .ativo(true)
+            .notificacaoVista((short) 0)
+            .total(BigDecimal.ZERO)          // recalculado abaixo
+            .enderecoJson(pedidoReq.enderecoJson)
+            .bairro(pedidoReq.bairro)
+            .pontoReferencia(pedidoReq.pontoReferencia)
+            .valorPagoManual(BigDecimal.ZERO)
+            .troco(BigDecimal.ZERO)
+            .ocultoCliente((short) 0)
+            .build();
+
+    pedido = pedidoRepository.save(pedido);
+
+    // 3. Converte cada ItemCarrinho em ItemPedido
+    //    O estoque JÁ foi descontado pelo CarrinhoService — não desconta novamente
+    for (ItemCarrinho itemCarrinho : carrinho.getItens()) {
+        Produto produto = itemCarrinho.getProduto();
+
+        BigDecimal precoUnitario = produto.getPrecoPromocional() != null
+                ? produto.getPrecoPromocional()
+                : produto.getPreco();
+
+        int quantidade = itemCarrinho.getQuantidade();
+
+        ItemPedido itemPedido = ItemPedido.builder()
+                .pedido(pedido)
+                .produto(produto)
+                .quantidade(quantidade)
+                .precoUnitario(precoUnitario)
+                .subtotal(precoUnitario.multiply(BigDecimal.valueOf(quantidade)))
+                .build();
+
+        itemPedidoRepository.save(itemPedido);
+        pedido.getItens().add(itemPedido);
+
+        log.info("Item migrado — produto '{}' | qty: {} | preço: {}",
+                produto.getNomeProduto(), quantidade, precoUnitario);
+    }
+
+    // 4. Recalcula e persiste total final
+    pedido.recalcularTotal();
+    pedido = pedidoRepository.save(pedido);
+
+    log.info("Pedido {} criado a partir do carrinho {} | {} itens | Total: {}",
+             pedido.getReference(), carrinho.getIdCarrinho(),
+             pedido.getItens().size(), pedido.getTotal());
+
+    return toResponseDTO(pedido);
+}
 }

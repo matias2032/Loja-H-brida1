@@ -11,6 +11,9 @@ dependencies:
   flutter:
     sdk: flutter
 
+  api_compartilhado:
+    path: ../../api_compartilhado
+
   shared_preferences: ^2.2.3
     
   connectivity_plus: ^5.0.0

@@ -2,7 +2,7 @@
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../config/api_config.dart';
+import 'package:api_compartilhado/api_config.dart';
 import '../models/categoria_model.dart';
 
 class CategoriaService {

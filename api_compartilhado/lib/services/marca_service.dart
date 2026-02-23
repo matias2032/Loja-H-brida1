@@ -2,8 +2,8 @@
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../config/api_config.dart';
 import '../models/marca_model.dart';
+import 'package:api_compartilhado/api_config.dart';
 
 class MarcaService {
   // ===== LISTAR TODAS AS MARCAS =====

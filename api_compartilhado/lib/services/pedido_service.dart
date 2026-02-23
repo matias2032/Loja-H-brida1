@@ -2,8 +2,9 @@
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../config/api_config.dart';
 import '../models/pedido_model.dart';
+import 'package:api_compartilhado/api_config.dart';
+
 
 class PedidoService {
 

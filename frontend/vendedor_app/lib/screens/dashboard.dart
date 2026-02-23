@@ -6,8 +6,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import '../widgets/app_sidebar.dart';
-import '../services/sessao_service.dart';
-import '../config/api_config.dart';
+import 'package:api_compartilhado/api_compartilhado.dart';
 
 // TODO: Descomentar quando sync_events_service for migrado
 // import '../services/sync_events_service.dart';

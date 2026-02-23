@@ -1,13 +1,9 @@
 import 'package:flutter/material.dart';
-import '../models/produto_model.dart';
-import '../models/marca_model.dart';
-import '../models/categoria_model.dart';
-import '../services/produto_service.dart';
-import '../services/marca_service.dart';
-import '../services/categoria_service.dart';
-import '../config/api_config.dart'; // ✅ ADICIONE este import
+import 'package:api_compartilhado/api_config.dart';
 import 'produto_form_screen.dart';
 import '../widgets/app_sidebar.dart'; // ✅ ADICIONE este import
+import 'package:api_compartilhado/api_compartilhado.dart';
+
 
 class ProdutoListScreen extends StatefulWidget {
   const ProdutoListScreen({Key? key}) : super(key: key);

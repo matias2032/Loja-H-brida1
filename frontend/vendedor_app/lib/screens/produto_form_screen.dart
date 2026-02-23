@@ -1,20 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../models/produto_model.dart';
-import '../models/marca_model.dart';
-import '../models/categoria_model.dart';
-import '../services/produto_service.dart';
-import '../services/marca_service.dart';
-import '../services/categoria_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import '../models/produto_imagem_model.dart';
-import '../config/api_config.dart';
+import 'package:api_compartilhado/api_config.dart';
 import 'dart:ui';
 import 'package:cross_file/cross_file.dart';  
 import 'package:desktop_drop/desktop_drop.dart';  // ✅ NOVO
-import '../services/movimento_estoque_service.dart';
-import '../models/movimento_estoque_model.dart';
+import 'package:api_compartilhado/api_compartilhado.dart';
+
 
   
 
