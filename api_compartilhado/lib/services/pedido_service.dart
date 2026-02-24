@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/pedido_model.dart';
 import 'package:api_compartilhado/api_config.dart';
+import 'sessao_service.dart';
 
 
 class PedidoService {
@@ -307,28 +308,28 @@ Future<void> desativarPedido(int idPedido) async {
 
   // ─── Listar pedidos por status ───────────────────────────────────────────
 
-  Future<List<Pedido>> listarPorStatus(String status) async {
-    try {
-      final response = await http
-          .get(
-            Uri.parse(
-              '${ApiConfig.pedidosUrl}/status/${Uri.encodeComponent(status)}',
-            ),
-            headers: ApiConfig.defaultHeaders,
-          )
-          .timeout(ApiConfig.timeout);
+  Future<List<Pedido>> listarPorStatusEUsuario(String status, int idUsuario) async {
+  try {
+    final response = await http
+        .get(
+          Uri.parse(
+            '${ApiConfig.pedidosUrl}/usuario/$idUsuario/status/${Uri.encodeComponent(status)}',
+          ),
+          headers: ApiConfig.defaultHeaders,
+        )
+        .timeout(ApiConfig.timeout);
 
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(utf8.decode(response.bodyBytes));
-        return data.map((e) => Pedido.fromJson(e)).toList();
-      } else {
-        throw Exception('Erro ao listar pedidos por status: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('❌ Erro no listarPorStatus: $e');
-      rethrow;
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(utf8.decode(response.bodyBytes));
+      return data.map((e) => Pedido.fromJson(e)).toList();
+    } else {
+      throw Exception('Erro ao listar pedidos por status: ${response.statusCode}');
     }
+  } catch (e) {
+    print('❌ Erro no listarPorStatusEUsuario: $e');
+    rethrow;
   }
+}
 
   Future<Pedido> ativarPedido(int idPedido) async {
   print('🟢 [SERVICE] ativarPedido($idPedido) — chamando backend...');
@@ -412,7 +413,9 @@ Future<void> desativarPedido(int idPedido) async {
   // ─── Listar pedidos "por finalizar" (atalho para a tela principal) ───────
 
   Future<List<Pedido>> listarPorFinalizar() async {
-    return listarPorStatus('por finalizar');
+    final usuario = SessaoService.instance.usuarioAtual;
+    if (usuario == null) throw Exception('Utilizador não autenticado');
+    return listarPorStatusEUsuario('por finalizar', usuario.idUsuario);
   }
 
   Future<Map<String, dynamic>> buscarTipoEntrega(int idTipoEntrega) async {

@@ -117,10 +117,14 @@ public class PedidoController {
         return ResponseEntity.ok(pedidoService.listarPorUsuario(idUsuario));
     }
 
-    /**
-     * GET /api/pedidos/status/{status}
-     * Ex: /api/pedidos/status/por%20finalizar
-     */
+   @GetMapping("/usuario/{idUsuario}/status/{status}")
+public ResponseEntity<List<PedidoResponseDTO>> listarPorUsuarioEStatus(
+        @PathVariable Integer idUsuario,
+        @PathVariable String status) {
+
+    return ResponseEntity.ok(pedidoService.listarPorUsuarioEStatus(idUsuario, status));
+}
+
     @GetMapping("/status/{status}")
     public ResponseEntity<List<PedidoResponseDTO>> listarPorStatus(
             @PathVariable String status) {

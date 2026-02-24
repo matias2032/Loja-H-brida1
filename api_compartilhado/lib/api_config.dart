@@ -7,7 +7,7 @@ class ApiConfig {
   
   static const String _prodBaseUrl = 'https://api.suaempresa.com';
   static const String _webDevUrl = 'http://localhost:8080';
-  static const String _androidDevUrl = 'http://192.168.1.3:8080'; // ✅ Teu IP Real
+  static const String _androidDevUrl = 'http://192.168.1.9:8080'; // ✅ Teu IP Real
 
   /// Retorna a URL base correta dependendo da plataforma e do modo (Debug/Release)
   static String get baseUrl {

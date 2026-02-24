@@ -677,4 +677,14 @@ public PedidoResponseDTO criarPedidoAPartirDoCarrinho(
 
     return toResponseDTO(pedido);
 }
+// Adicionar após listarPorStatus()
+@Transactional(readOnly = true)
+public List<PedidoResponseDTO> listarPorUsuarioEStatus(Integer idUsuario, String status) {
+    return pedidoRepository
+            .findByIdUsuarioAndStatusPedidoOrderByDataPedidoDesc(idUsuario, status)
+            .stream()
+            .map(this::toResponseDTO)
+            .collect(Collectors.toList());
+}
+
 }

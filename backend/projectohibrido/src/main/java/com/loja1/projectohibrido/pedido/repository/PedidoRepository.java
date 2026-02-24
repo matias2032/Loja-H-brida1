@@ -60,5 +60,7 @@ List<Object[]> evolucaoVendasPorDia(@Param("dataInicio") LocalDateTime dataInici
     """)
 List<Object[]> desempenhoUsuarios(@Param("dataInicio") LocalDateTime dataInicio);
 
+// Adicionar este método ao PedidoRepository
+List<Pedido> findByIdUsuarioAndStatusPedidoOrderByDataPedidoDesc(Integer idUsuario, String statusPedido);
 }
 

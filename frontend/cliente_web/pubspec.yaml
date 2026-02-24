@@ -14,6 +14,7 @@ dependencies:
     path: ../../api_compartilhado
 
   cupertino_icons: ^1.0.8
+  desktop_drop: ^0.4.4  
 
   dio: ^5.4.0
   provider: ^6.0.5

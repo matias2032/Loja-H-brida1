@@ -39,7 +39,9 @@ class _PedidosPorFinalizarScreenState
     });
 
     try {
-      final lista = await _pedidoService.listarPorStatus('por finalizar');
+      final usuario = SessaoService.instance.usuarioAtual;
+      if (usuario == null) throw Exception('Utilizador não autenticado');
+      final lista = await _pedidoService.listarPorStatusEUsuario('por finalizar', usuario.idUsuario);
       if (mounted) {
         setState(() {
           _pedidos = lista;

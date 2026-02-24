@@ -37,9 +37,7 @@ class PedidoContadorService {
 
       final response = await http
           .get(
-            Uri.parse(
-              '${ApiConfig.pedidosUrl}/status/${Uri.encodeComponent('por finalizar')}',
-            ),
+           Uri.parse('${ApiConfig.pedidosUrl}/usuario/$idUsuario/status/${Uri.encodeComponent('por finalizar')}'),
             headers: ApiConfig.defaultHeaders,
           )
           .timeout(ApiConfig.timeout);

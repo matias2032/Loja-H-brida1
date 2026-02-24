@@ -6,12 +6,15 @@ import 'screens/categorias_list_screen.dart';
 import 'screens/categoria_form_screen.dart';
 import 'screens/marcas_list_screen.dart';
 import 'screens/marca_form_screen.dart';
+import 'screens/produto_form_screen.dart';
+import 'screens/produto_list_screen.dart';
 import 'screens/menu.dart';                         // ✅ NOVO
 import 'screens/detalhes_produto.dart';             // ✅ NOVO
 import 'screens/pedidos_por_finalizar.dart'; // ✅ NOVO
 import 'screens/movimento_estoque.dart';
 import 'screens/tela_login.dart';
 import 'screens/primeira_troca_senha.dart';
+import 'screens/dashboard.dart';
 import 'screens/alterar_senha.dart';
 import 'screens/editar_usuario.dart';
 
@@ -44,7 +47,7 @@ class MyApp extends StatelessWidget {
       themeMode: ThemeMode.system,
       
       // ===== TELA INICIAL =====
-    initialRoute: '/menu',
+      initialRoute: '/',
       
       // ===== ROTAS NOMEADAS =====
       onGenerateRoute: (settings) {
@@ -88,7 +91,12 @@ class MyApp extends StatelessWidget {
               builder: (context) => const PrimeiraTrocaSenhaScreen(),
             );
 
-      
+          // 🔥 DASHBOARD — destino após login bem-sucedido
+          case '/dashboard':
+            return MaterialPageRoute(
+              builder: (context) => const DashboardVendasScreen(),
+            );
+
 
           // USUÁRIOS
           case '/usuarios':
@@ -121,7 +129,10 @@ class MyApp extends StatelessWidget {
             );
 
           // PRODUTOS (gestão interna)
-
+          case '/produtos':
+            return MaterialPageRoute(
+              builder: (context) => const ProdutoListScreen(),
+            );
 
 
           // ✅ MENU — catálogo de produtos activos para criação de pedidos
