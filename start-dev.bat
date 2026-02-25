@@ -10,9 +10,9 @@ start "BACKEND" cmd /k "mvnw spring-boot:run"
 :: Aguardar o Spring Boot iniciar
 timeout /t 15 /nobreak
 
-:: 2. Iniciar o Frontend para Windows
-cd "C:\desenvolvimento hibrido\loja1\frontend\vendedor_app"
-start "FLUTTER WINDOWS" cmd /k "flutter run -d windows"
+@REM :: 2. Iniciar o Frontend para Windows
+@REM cd "C:\desenvolvimento hibrido\loja1\frontend\vendedor_app"
+@REM start "FLUTTER WINDOWS" cmd /k "flutter run -d windows"
 
 :: 3. Iniciar o Frontend para Chrome (Web)
 :: --web-renderer foi removido no Flutter 3.22+

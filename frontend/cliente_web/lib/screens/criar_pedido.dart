@@ -4,15 +4,15 @@ import 'package:http/http.dart' as http;
 import 'package:api_compartilhado/api_compartilhado.dart';
 
 
-class FinalizarPedidoScreen extends StatefulWidget {
-  final Pedido pedido;
-  const FinalizarPedidoScreen({Key? key, required this.pedido}) : super(key: key);
+class CriarPedidoScreen extends StatefulWidget {
+  final int idCarrinho;
+  const CriarPedidoScreen({Key? key, required this.idCarrinho}) : super(key: key);
 
   @override
-  State<FinalizarPedidoScreen> createState() => _FinalizarPedidoScreenState();
+  State<CriarPedidoScreen> createState() => _CriarPedidoScreenState();
 }
 
-class _FinalizarPedidoScreenState extends State<FinalizarPedidoScreen> {
+class _CriarPedidoScreenState extends State<CriarPedidoScreen> {
   final PedidoService _service = PedidoService();
 
   final _valorPagoCtrl  = TextEditingController();
@@ -22,11 +22,16 @@ class _FinalizarPedidoScreenState extends State<FinalizarPedidoScreen> {
   final _bairroCtrl     = TextEditingController();
   final _referenciaCtrl = TextEditingController();
   final _telefoneCtrl   = TextEditingController();
+  final CarrinhoService _carrinhoService = CarrinhoService();
+CarrinhoModel? _carrinho;
+bool _loadingCarrinho = true;
+
 
   int _idTipoPagamento = 1; // padrão: dinheiro
   int _idTipoEntrega   = 1; // padrão: balcão
   bool _loading        = false;
   bool _loadingCusto   = false;
+  
 
   double _custoDelivery = 0.0;
 
@@ -35,11 +40,11 @@ class _FinalizarPedidoScreenState extends State<FinalizarPedidoScreen> {
   bool _loadingPagamento = false;
 
   bool get _isDinheiro   => _idTipoPagamento == 1;
-  bool get _isLojaFisica => widget.pedido.idTipoOrigemPedido != 1; // null ou 2 → mostra
-  bool get _isDelivery   => _idTipoEntrega == 2;
+   bool get _isDelivery   => _idTipoEntrega == 2;
 
-  double get _totalBase       => widget.pedido.total;
-  double get _totalComEntrega => _isDelivery ? _totalBase + _custoDelivery : _totalBase;
+bool get _isLojaFisica => false; // checkout online — entrega sempre visível se necessário
+double get _totalBase       => _carrinho?.total ?? 0.0;
+double get _totalComEntrega => _isDelivery ? _totalBase + _custoDelivery : _totalBase;
 
   double get _troco {
     if (!_isDinheiro) return 0;
@@ -51,8 +56,8 @@ class _FinalizarPedidoScreenState extends State<FinalizarPedidoScreen> {
   @override
   void initState() {
     super.initState();
-    print('🏁 [FINALIZAR] idTipoOrigemPedido: ${widget.pedido.idTipoOrigemPedido}');
-    print('🏁 [FINALIZAR] isLojaFisica: $_isLojaFisica');
+print('🏁 [CRIAR] idCarrinho: ${widget.idCarrinho}');
+    _carregarCarrinho();          
     _carregarCustoDelivery();
     _carregarTiposPagamento(); // ADICIONADO
   }
@@ -87,6 +92,19 @@ class _FinalizarPedidoScreenState extends State<FinalizarPedidoScreen> {
     }
   }
 
+
+Future<void> _carregarCarrinho() async {
+  setState(() => _loadingCarrinho = true);
+  try {
+    final carrinho = await _carrinhoService.buscarCarrinho(widget.idCarrinho);
+    setState(() => _carrinho = carrinho);
+  } catch (e) {
+    print('❌ Erro ao carregar carrinho: $e');
+  } finally {
+    setState(() => _loadingCarrinho = false);
+  }
+}
+
   // ADICIONADO: carrega métodos de pagamento da BD
   Future<void> _carregarTiposPagamento() async {
     setState(() => _loadingPagamento = true);
@@ -112,9 +130,6 @@ class _FinalizarPedidoScreenState extends State<FinalizarPedidoScreen> {
   Future<void> _confirmar() async {
 
       print('========================================');
-  print('🏁 [CONFIRMAR] Pedido: ${widget.pedido.reference}');
-  print('🏁 [CONFIRMAR] idTipoOrigemPedido: ${widget.pedido.idTipoOrigemPedido}');
-  print('🏁 [CONFIRMAR] isLojaFisica: $_isLojaFisica');
   print('🏁 [CONFIRMAR] idTipoEntrega: $_idTipoEntrega | isDelivery: $_isDelivery');
   print('🏁 [CONFIRMAR] idTipoPagamento: $_idTipoPagamento | isDinheiro: $_isDinheiro');
   print('🏁 [CONFIRMAR] totalBase: $_totalBase | custoDelivery: $_custoDelivery | totalFinal: $_totalComEntrega');
@@ -149,42 +164,44 @@ class _FinalizarPedidoScreenState extends State<FinalizarPedidoScreen> {
       }
     }
 
-    setState(() => _loading = true);
-    print('🏁 [FINALIZAR] Confirmando pedido ${widget.pedido.reference}');
+  setState(() => _loading = true);
+print('🏁 [CRIAR] Convertendo carrinho ${widget.idCarrinho}');
 
-    try {
-      await _service.finalizarPedido(
-        idPedido:        widget.pedido.idPedido!,
-        idTipoPagamento: _idTipoPagamento,
-        valorPago: _isDinheiro
-            ? double.tryParse(_valorPagoCtrl.text.replaceAll(',', '.'))
-            : null,
-        idTipoEntrega:   _idTipoEntrega,
-        nomeCliente:     _nomeCtrl.text.trim(),
-        apelidoCliente:  _apelidoCtrl.text.trim(),
-        telefone:        _telefoneCtrl.text.trim(),
-        enderecoJson:    _enderecoCtrl.text.trim(),
-        bairro:          _bairroCtrl.text.trim(),
-        pontoReferencia: _referenciaCtrl.text.trim(),
-      );
+      try {
+    final pedidoReq = {
+      'idUsuario':          SessaoService.instance.idUsuario,
+      'idTipoOrigemPedido': 1,                // ← WEBSITE (fixo)
+      'idTipoPagamento':    _idTipoPagamento,
+      'idTipoEntrega':      _idTipoEntrega,
+      'statusPedido':       'pendente',        // ← fixo no checkout online
+      'valorPago': _isDinheiro
+          ? double.tryParse(_valorPagoCtrl.text.replaceAll(',', '.'))
+          : null,
+      'nomeCliente':     _nomeCtrl.text.trim(),
+      'apelidoCliente':  _apelidoCtrl.text.trim(),
+      'telefone':        _telefoneCtrl.text.trim(),
+      'bairro':          _bairroCtrl.text.trim(),
+      'pontoReferencia': _referenciaCtrl.text.trim(),
+    };
 
-      print('✅ [FINALIZAR] Sucesso');
-      
-      if (mounted) {
-        setState(() => _loading = false);
-        // Chamar o feedback de sucesso
-        _mostrarFeedbackSucesso();
-      }
-    } catch (e) {
-      print('❌ [FINALIZAR] Erro: $e');
-      if (mounted) {
-        setState(() => _loading = false);
-        _mostrarFeedbackErro(e.toString());
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
+    // Converte carrinho → pedido num único endpoint
+    await _carrinhoService.converterEmPedido(widget.idCarrinho, pedidoReq);
+
+    // Limpa o contador (carrinho foi convertido/eliminado no backend)
+    CarrinhoContadorService.instance.invalidarCache();
+    await CarrinhoContadorService.instance.recarregarSeNecessario();
+
+    if (mounted) {
+      setState(() => _loading = false);
+      _mostrarFeedbackSucesso(); // reutiliza helper de FinalizarPedidoScreen
+    }
+  } catch (e) {
+    if (mounted) {
+      setState(() => _loading = false);
+      _mostrarFeedbackErro(e.toString());
     }
   }
+}
 
 
   void _mostrarFeedbackSucesso() {
@@ -205,7 +222,7 @@ class _FinalizarPedidoScreenState extends State<FinalizarPedidoScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'O pedido ${widget.pedido.reference} foi processado com sucesso.',
+                'O seu pedido foi criado e está pendente de confirmação.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.grey[600]),
               ),
@@ -278,11 +295,10 @@ class _FinalizarPedidoScreenState extends State<FinalizarPedidoScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: Text(
-          'Finalizar ${widget.pedido.reference ?? ''}',
-          style: const TextStyle(
-              color: Color(0xFF1A1A2E), fontWeight: FontWeight.bold),
-        ),
+       title: const Text(
+  'Checkout',
+  style: TextStyle(color: Color(0xFF1A1A2E), fontWeight: FontWeight.bold),
+),
         iconTheme: const IconThemeData(color: Color(0xFF1A1A2E)),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
@@ -293,23 +309,25 @@ class _FinalizarPedidoScreenState extends State<FinalizarPedidoScreen> {
         padding: const EdgeInsets.all(20),
         children: [
           // ── Resumo ──────────────────────────────────────────────────────
-          _secao('Resumo do Pedido', [
-            _linhaInfo('Referência', widget.pedido.reference ?? '—'),
-            _linhaInfo('Itens', '${widget.pedido.totalItens}'),
-            _linhaInfo('Subtotal', 'MZN ${_totalBase.toStringAsFixed(2)}'),
-            if (_isDelivery)
-              _linhaInfo('Entrega', '+ MZN ${_custoDelivery.toStringAsFixed(2)}'),
-            _linhaInfo('Total', 'MZN ${_totalComEntrega.toStringAsFixed(2)}',
-                destaque: true),
-            _linhaInfo(
-              'Origem',
-              widget.pedido.idTipoOrigemPedido == 1
-                  ? 'Online'
-                  : widget.pedido.idTipoOrigemPedido == 2
-                      ? 'Loja Física'
-                      : 'Não definida',
-            ),
-          ]),
+     _loadingCarrinho
+    ? const Center(child: Padding(
+        padding: EdgeInsets.all(16),
+        child: CircularProgressIndicator()))
+    : _secao('Resumo do Carrinho', [
+        ..._carrinho?.itens.map((item) => _linhaInfo(
+              '${item.nomeProduto} ×${item.quantidade}',
+              'MZN ${item.subtotal.toStringAsFixed(2)}',
+            )) ?? [],
+        const Divider(height: 20),
+        _linhaInfo('Subtotal', 'MZN ${_totalBase.toStringAsFixed(2)}'),
+        if (_isDelivery)
+          _linhaInfo('Entrega', '+ MZN ${_custoDelivery.toStringAsFixed(2)}'),
+        _linhaInfo(
+          'Total',
+          'MZN ${_totalComEntrega.toStringAsFixed(2)}',
+          destaque: true,
+        ),
+      ]),
 
           const SizedBox(height: 20),
 

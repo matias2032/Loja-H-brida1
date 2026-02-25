@@ -37,7 +37,7 @@ class _MenuScreenState extends State<MenuScreen> {
   bool _isLoading = true;
   String? _errorMessage;
   bool _filtrosVisiveis = false;
-final PedidoContadorService _contadorService = PedidoContadorService.instance;
+final CarrinhoContadorService _carrinhoContador = CarrinhoContadorService.instance;
 
   @override
   void initState() {
@@ -46,8 +46,8 @@ final PedidoContadorService _contadorService = PedidoContadorService.instance;
     _searchController.addListener(_aplicarFiltros);
     PedidoAtivoController.instance.carregar(1);
    // Invalida cache para forçar leitura fresca ao entrar no ecrã
-_contadorService.invalidarCache();
-_contadorService.recarregarSeNecessario();
+  _carrinhoContador.invalidarCache();
+  _carrinhoContador.recarregarSeNecessario();
   }
 
   @override
@@ -82,8 +82,8 @@ _contadorService.recarregarSeNecessario();
       });
 
       _aplicarFiltros();
-    _contadorService.invalidarCache();
-_contadorService.recarregarSeNecessario();
+ _carrinhoContador.invalidarCache();
+  _carrinhoContador.recarregarSeNecessario();
     } catch (e) {
       setState(() {
         _errorMessage = e.toString();
@@ -227,49 +227,40 @@ Widget build(BuildContext context) {
 
 // Substituir todo o Stack do ícone de pedidos por:
 StreamBuilder<int>(
-  stream: _contadorService.contadorStream,
-  initialData: _contadorService.contadorAtual,
+  stream: _carrinhoContador.contadorStream,
+  initialData: _carrinhoContador.contadorAtual,
   builder: (context, snapshot) {
     final contador = snapshot.data ?? 0;
     return Stack(
       alignment: Alignment.topRight,
       children: [
         IconButton(
-          icon: const Icon(Icons.receipt_long, color: Color(0xFF1A1A2E)),
-          tooltip: 'Pedidos Por Finalizar',
+          icon: const Icon(Icons.shopping_cart_outlined, color: Color(0xFF1A1A2E)),
+          tooltip: 'Carrinho',
           onPressed: () async {
-            await Navigator.of(context).pushNamed('/pedidos_por_finalizar');
-            _contadorService.invalidarCache();
-            await _contadorService.recarregarSeNecessario();
+            await Navigator.of(context).pushNamed('/carrinho');
+            _carrinhoContador.invalidarCache();
+            await _carrinhoContador.recarregarSeNecessario();
           },
         ),
         if (contador > 0)
           Positioned(
-            right: 6,
-            top: 6,
+            right: 6, top: 6,
             child: Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
                 color: Colors.red,
                 shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
+                boxShadow: [BoxShadow(
                     color: Colors.red.withOpacity(0.5),
-                    blurRadius: 4,
-                    spreadRadius: 1,
-                  ),
-                ],
+                    blurRadius: 4, spreadRadius: 1)],
               ),
               constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
               child: Center(
-                child: Text(
-                  '$contador',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                child: Text('$contador',
+                    style: const TextStyle(
+                        color: Colors.white, fontSize: 11,
+                        fontWeight: FontWeight.bold)),
               ),
             ),
           ),

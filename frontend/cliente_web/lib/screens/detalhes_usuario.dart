@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:api_compartilhado/api_config.dart';
 
 class DetalhesUsuarioScreen extends StatefulWidget {
   final int usuarioId;
@@ -13,7 +14,7 @@ class DetalhesUsuarioScreen extends StatefulWidget {
 }
 
 class _DetalhesUsuarioScreenState extends State<DetalhesUsuarioScreen> {
-  static const String baseUrl = 'http://localhost:8080/api/usuarios';
+
   
   late Future<Usuario?> _usuarioFuture;
 
@@ -33,7 +34,7 @@ class _DetalhesUsuarioScreenState extends State<DetalhesUsuarioScreen> {
   Future<Usuario?> _buscarUsuario() async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/${widget.usuarioId}'),
+        Uri.parse('${ApiConfig.usuariosUrl}/${widget.usuarioId}'),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -85,7 +86,7 @@ class _DetalhesUsuarioScreenState extends State<DetalhesUsuarioScreen> {
 
     try {
       final response = await http.patch(
-        Uri.parse('$baseUrl/${widget.usuarioId}/toggle-status'),
+        Uri.parse('${ApiConfig.usuariosUrl}/${widget.usuarioId}/toggle-status'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -190,7 +191,7 @@ class _DetalhesUsuarioScreenState extends State<DetalhesUsuarioScreen> {
 
     try {
       final response = await http.patch(
-        Uri.parse('$baseUrl/${widget.usuarioId}/reset-password'),
+        Uri.parse('${ApiConfig.usuariosUrl}/${widget.usuarioId}/reset-password'),
         headers: {
           'Content-Type': 'application/json',
         },

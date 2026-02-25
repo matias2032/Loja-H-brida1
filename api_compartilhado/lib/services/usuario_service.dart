@@ -1,19 +1,14 @@
-// lib/services/usuario_service.dart
-
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:api_compartilhado/api_config.dart'; // Ajuste o package conforme seu projeto
 import '../models/usuario_model.dart';
 
 class UsuarioService {
-  static const String _baseUrl = 'http://localhost:8080/api/usuarios';
-
-  static final Map<String, String> _headers = {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  };
+  
+  /// Helper para converter a String do ApiConfig em Uri
+  Uri _uri([String path = '']) => Uri.parse('${ApiConfig.usuariosUrl}$path');
 
   /// POST /api/usuarios — cria funcionário com senha padrão
-  /// O hash BCrypt é feito pelo Spring Boot
   Future<UsuarioModel> criarUsuario({
     required String nome,
     required String apelido,
@@ -25,25 +20,27 @@ class UsuarioService {
       'nome': nome,
       'apelido': apelido,
       'email': email,
-      'senha': '12345678',   // Spring Boot faz o hash
+      'senha': '12345678', // Spring Boot faz o hash
       'telefone': telefone,
       'idPerfil': idPerfil,
     });
 
-    final response = await http.post(
-      Uri.parse(_baseUrl),
-      headers: _headers,
-      body: body,
-    );
+    final response = await http
+        .post(
+          _uri(),
+          headers: ApiConfig.defaultHeaders,
+          body: body,
+        )
+        .timeout(ApiConfig.timeout);
 
     if (response.statusCode == 201) {
-      return UsuarioModel.fromJson(jsonDecode(response.body));
+      return UsuarioModel.fromJson(jsonDecode(utf8.decode(response.bodyBytes)));
     }
 
-    // Extrai mensagem de erro do backend quando disponível
+    // Extrai mensagem de erro do backend
     String erro = 'Erro ao cadastrar usuário (${response.statusCode})';
     try {
-      final json = jsonDecode(response.body);
+      final json = jsonDecode(utf8.decode(response.bodyBytes));
       erro = json['message'] ?? json['error'] ?? erro;
     } catch (_) {}
 
@@ -56,11 +53,15 @@ class UsuarioService {
     if (perfil != null) params['perfil'] = '$perfil';
     if (ativo != null) params['ativo'] = '$ativo';
 
-    final uri = Uri.parse(_baseUrl).replace(queryParameters: params.isEmpty ? null : params);
-    final response = await http.get(uri, headers: _headers);
+    // Cria a URI base e anexa os query parameters
+    final uri = _uri().replace(queryParameters: params.isEmpty ? null : params);
+
+    final response = await http
+        .get(uri, headers: ApiConfig.defaultHeaders)
+        .timeout(ApiConfig.timeout);
 
     if (response.statusCode == 200) {
-      final List<dynamic> list = jsonDecode(response.body);
+      final List<dynamic> list = jsonDecode(utf8.decode(response.bodyBytes));
       return list.map((e) => UsuarioModel.fromJson(e)).toList();
     }
     throw Exception('Erro ao listar usuários (${response.statusCode})');
@@ -68,36 +69,42 @@ class UsuarioService {
 
   /// GET /api/usuarios/{id}
   Future<UsuarioModel> buscarPorId(int id) async {
-    final response = await http.get(Uri.parse('$_baseUrl/$id'), headers: _headers);
+    final response = await http
+        .get(_uri('/$id'), headers: ApiConfig.defaultHeaders)
+        .timeout(ApiConfig.timeout);
 
     if (response.statusCode == 200) {
-      return UsuarioModel.fromJson(jsonDecode(response.body));
+      return UsuarioModel.fromJson(jsonDecode(utf8.decode(response.bodyBytes)));
     }
     throw Exception('Usuário não encontrado (${response.statusCode})');
   }
 
   /// PATCH /api/usuarios/{id}/toggle-status
   Future<UsuarioModel> toggleStatus(int id) async {
-    final response = await http.patch(
-      Uri.parse('$_baseUrl/$id/toggle-status'),
-      headers: _headers,
-    );
+    final response = await http
+        .patch(
+          _uri('/$id/toggle-status'),
+          headers: ApiConfig.defaultHeaders,
+        )
+        .timeout(ApiConfig.timeout);
 
     if (response.statusCode == 200) {
-      return UsuarioModel.fromJson(jsonDecode(response.body));
+      return UsuarioModel.fromJson(jsonDecode(utf8.decode(response.bodyBytes)));
     }
     throw Exception('Erro ao alterar status (${response.statusCode})');
   }
 
   /// PATCH /api/usuarios/{id}/reset-password
   Future<UsuarioModel> resetarSenha(int id) async {
-    final response = await http.patch(
-      Uri.parse('$_baseUrl/$id/reset-password'),
-      headers: _headers,
-    );
+    final response = await http
+        .patch(
+          _uri('/$id/reset-password'),
+          headers: ApiConfig.defaultHeaders,
+        )
+        .timeout(ApiConfig.timeout);
 
     if (response.statusCode == 200) {
-      return UsuarioModel.fromJson(jsonDecode(response.body));
+      return UsuarioModel.fromJson(jsonDecode(utf8.decode(response.bodyBytes)));
     }
     throw Exception('Erro ao resetar senha (${response.statusCode})');
   }

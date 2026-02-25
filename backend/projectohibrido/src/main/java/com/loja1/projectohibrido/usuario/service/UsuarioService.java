@@ -114,7 +114,8 @@ public class UsuarioService {
 
         // Validação: Não permitir atualizar para perfil Admin
 // DEPOIS
-if (request.getIdPerfil() == 1 && !usuario.getIdPerfil().equals(1)) {
+if (Integer.valueOf(1).equals(request.getIdPerfil()) 
+    && !Integer.valueOf(1).equals(usuario.getIdPerfil())) {
     throw new BusinessException("Não é permitido alterar usuário para perfil de Administrador");
 }
 
@@ -150,10 +151,10 @@ if (request.getIdPerfil() == 1 && !usuario.getIdPerfil().equals(1)) {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com ID: " + id));
 
-        // Validação: Não permitir desativar administradores
-        if (usuario.getIdPerfil() == 1) {
-            throw new BusinessException("Não é permitido desativar usuários administradores");
-        }
+
+if (Integer.valueOf(1).equals(usuario.getIdPerfil())) {
+    throw new BusinessException("Não é permitido desativar usuários administradores");
+}
 
         // Alterna o status
         usuario.toggleStatus();

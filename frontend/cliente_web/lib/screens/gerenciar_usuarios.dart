@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:api_compartilhado/api_config.dart';
 import '../widgets/app_sidebar.dart';
 // import '../widgets/theme_toggle_widget.dart';
 // import '../widgets/conectividade_indicator.dart';
@@ -75,7 +76,7 @@ class UsuarioListScreen extends StatefulWidget {
 
 class _UsuarioListScreenState extends State<UsuarioListScreen> {
   // 🔧 CONFIGURE SUA URL BASE AQUI
-  static const String baseUrl = 'http://localhost:8080/api/usuarios';
+
   
   late Future<List<Usuario>> _usuariosFuture;
   StatusFiltro _statusFiltro = StatusFiltro.todos;
@@ -91,7 +92,7 @@ class _UsuarioListScreenState extends State<UsuarioListScreen> {
   Future<List<Usuario>> _loadUsuarios() async {
     try {
       // Constrói URL com query parameters
-      String url = baseUrl;
+      String url = ApiConfig.usuariosUrl;
       List<String> queryParams = [];
 
       // Filtro de perfil
@@ -136,7 +137,7 @@ class _UsuarioListScreenState extends State<UsuarioListScreen> {
   Future<void> _toggleStatus(int idUsuario) async {
     try {
       final response = await http.patch(
-        Uri.parse('$baseUrl/$idUsuario/toggle-status'),
+        Uri.parse('${ApiConfig.usuariosUrl}/$idUsuario/toggle-status'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -185,7 +186,7 @@ class _UsuarioListScreenState extends State<UsuarioListScreen> {
 
     try {
       final response = await http.patch(
-        Uri.parse('$baseUrl/$idUsuario/reset-password'),
+Uri.parse('${ApiConfig.usuariosUrl}/$idUsuario/reset-password'),
         headers: {
           'Content-Type': 'application/json',
         },

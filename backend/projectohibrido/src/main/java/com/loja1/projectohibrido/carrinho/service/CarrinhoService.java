@@ -71,6 +71,22 @@ public class CarrinhoService {
                 .orElseGet(() -> toDTO(carrinhoRepo.save(novoCarrinhoGuest(sid))));
     }
 
+
+@Transactional(readOnly = true)
+public CarrinhoDTO buscarCarrinhoActivo(Integer idUsuario, String cartSessionId) {
+    if (idUsuario != null) {
+        return carrinhoRepo.findByIdUsuarioAndStatus(idUsuario, "activo")
+                .map(this::toDTOPublic)
+                .orElse(null);
+    }
+    if (cartSessionId != null && !cartSessionId.isBlank()) {
+        return carrinhoRepo.findBySessionIdAndStatus(cartSessionId, "activo")
+                .map(this::toDTOPublic)
+                .orElse(null);
+    }
+    return null;
+}
+
     private Carrinho novoCarrinhoAutenticado(Integer idUsuario) {
         Carrinho c = new Carrinho();
         c.setIdUsuario(idUsuario);
@@ -345,28 +361,32 @@ public class CarrinhoService {
     // Mapeamento Entidade → DTO
     // ─────────────────────────────────────────────────────────────────────────
 
-    private CarrinhoDTO toDTO(Carrinho carrinho) {
-        List<ItemCarrinhoDTO> itensDTO = carrinho.getItens() == null
-                ? new ArrayList<>()
-                : carrinho.getItens().stream()
-                          .map(this::toItemDTO)
-                          .collect(Collectors.toList());
+  public CarrinhoDTO toDTOPublic(Carrinho carrinho) {
+    List<ItemCarrinhoDTO> itensDTO = carrinho.getItens() == null
+            ? new ArrayList<>()
+            : carrinho.getItens().stream()
+                      .map(this::toItemDTO)
+                      .collect(Collectors.toList());
 
-        BigDecimal total = itensDTO.stream()
-                .map(ItemCarrinhoDTO::getSubtotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    BigDecimal total = itensDTO.stream()
+            .map(ItemCarrinhoDTO::getSubtotal)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        return new CarrinhoDTO(
-                carrinho.getIdCarrinho(),
-                carrinho.getIdUsuario(),
-                carrinho.getSessionId(),
-                carrinho.getStatus(),
-                carrinho.getDataCriacao(),
-                itensDTO,
-                total
-        );
-    }
+    return new CarrinhoDTO(
+            carrinho.getIdCarrinho(),
+            carrinho.getIdUsuario(),
+            carrinho.getSessionId(),
+            carrinho.getStatus(),
+            carrinho.getDataCriacao(),
+            itensDTO,
+            total
+    );
+}
 
+// Alias privado para compatibilidade com todos os pontos que chamam toDTO()
+private CarrinhoDTO toDTO(Carrinho carrinho) {
+    return toDTOPublic(carrinho);
+}
     private ItemCarrinhoDTO toItemDTO(ItemCarrinho item) {
         Produto p = item.getProduto();
 
@@ -387,4 +407,22 @@ public class CarrinhoService {
                 item.getSubtotal()
         );
     }
+
+    @Transactional
+public CarrinhoDTO associarCarrinhoAoUsuario(String sessionId, Integer idUsuario) {
+    // Se já existe carrinho activo para o utilizador, mescla
+    Optional<Carrinho> existente = carrinhoRepo.findByIdUsuarioAndStatus(idUsuario, "activo");
+    if (existente.isPresent()) {
+        return mesclarCarrinhos(sessionId, idUsuario);
+    }
+
+    // Caso contrário, associa directamente o carrinho guest ao utilizador
+    return carrinhoRepo.findBySessionIdAndStatus(sessionId, "activo")
+            .map(c -> {
+                c.setIdUsuario(idUsuario);
+                c.setSessionId(null);
+                return toDTOPublic(carrinhoRepo.save(c));
+            })
+            .orElse(null);
+}
 }

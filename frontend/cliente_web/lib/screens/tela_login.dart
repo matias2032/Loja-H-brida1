@@ -119,12 +119,12 @@ Future<void> _handleLogin() async {
                       shape: BoxShape.circle,
                     ),
                     // Substitua o trecho dentro do Container (Logo ou Ícone)
-child: Image.asset(
-  'assets/icon/app_icon.png',
-  width: 60,
-  height: 60,
-  fit: BoxFit.contain,
-),
+
+child: const Icon(
+  Icons.flutter_dash, // O mascote oficial do Flutter
+  size: 60,
+  color: Colors.deepOrange,
+),     
                   ),
                   const SizedBox(height: 24),
 

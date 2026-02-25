@@ -13,9 +13,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import java.util.Map;
 
 @RestController
-@RequestMapping("/api/carrinho")
+@RequestMapping("/api/carrinhos")
 @RequiredArgsConstructor
 public class CarrinhoController {
 
@@ -36,20 +37,42 @@ public class CarrinhoController {
 
     // ── Endpoints ─────────────────────────────────────────────────────────────
 
-    /**
-     * Cria um novo carrinho.
-     * Para utilizadores autenticados usa o idUsuario do token.
-     * Para guests usa o cartSessionId do cookie.
-     */
-    @PostMapping
-    public ResponseEntity<CarrinhoDTO> criar(
-            Authentication auth,
-            @CookieValue(name = "cartSessionId", required = false) String cartSessionId) {
 
-        CarrinhoDTO dto = carrinhoService.criarCarrinho(getUserId(auth), cartSessionId);
-        return ResponseEntity.status(HttpStatus.CREATED).body(dto);
+@PostMapping
+public ResponseEntity<CarrinhoDTO> criar(
+        Authentication auth,
+        @CookieValue(name = "cartSessionId", required = false) String cookieSessionId,
+        @RequestHeader(name = "X-Cart-Session-Id", required = false) String headerSessionId,
+        @RequestHeader(name = "X-User-Id", required = false) Integer headerUserId) {
+
+    String sessionId = headerSessionId != null ? headerSessionId : cookieSessionId;
+    Integer idUsuario = getUserId(auth) != null ? getUserId(auth) : headerUserId;
+
+    CarrinhoDTO dto = carrinhoService.criarCarrinho(idUsuario, sessionId);
+
+    ResponseEntity.BodyBuilder builder = ResponseEntity.status(HttpStatus.CREATED);
+    if (dto.getSessionId() != null) {
+        builder.header("X-Cart-Session-Id", dto.getSessionId());
     }
+    return builder.body(dto);
+}
 
+@GetMapping("/activo")
+public ResponseEntity<CarrinhoDTO> buscarActivo(
+        Authentication auth,
+        @CookieValue(name = "cartSessionId", required = false) String cookieSessionId,
+        @RequestHeader(name = "X-Cart-Session-Id", required = false) String headerSessionId,
+        @RequestHeader(name = "X-User-Id", required = false) Integer headerUserId) {
+
+    String sessionId = headerSessionId != null ? headerSessionId : cookieSessionId;
+    
+    // Sem JWT: usa o idUsuario enviado pelo frontend no header
+    Integer idUsuario = getUserId(auth) != null ? getUserId(auth) : headerUserId;
+
+    CarrinhoDTO dto = carrinhoService.buscarCarrinhoActivo(idUsuario, sessionId);
+    if (dto == null) return ResponseEntity.notFound().build();
+    return ResponseEntity.ok(dto);
+}
     /**
      * Adiciona um novo item ou soma quantidade a item já existente no carrinho.
      */
@@ -119,4 +142,38 @@ public class CarrinhoController {
         CarrinhoDTO dto = carrinhoService.mesclarCarrinhos(req.getSessionId(), getUserId(auth));
         return ResponseEntity.ok(dto);
     }
+
+    @PatchMapping("/associar-usuario")
+public ResponseEntity<CarrinhoDTO> associarUsuario(
+        @RequestBody Map<String, Object> body) {
+
+    String sessionId = (String) body.get("sessionId");
+    Integer idUsuario = (Integer) body.get("idUsuario");
+
+    if (sessionId == null || idUsuario == null) {
+        return ResponseEntity.badRequest().build();
+    }
+
+    CarrinhoDTO dto = carrinhoService.associarCarrinhoAoUsuario(sessionId, idUsuario);
+    if (dto == null) return ResponseEntity.notFound().build();
+    return ResponseEntity.ok(dto);
+}
+ 
+@PostMapping("/inicializar")
+public ResponseEntity<CarrinhoDTO> inicializarParaUsuario(
+        @RequestBody Map<String, Object> body) {
+
+    Integer idUsuario = (Integer) body.get("idUsuario");
+    if (idUsuario == null) return ResponseEntity.badRequest().build();
+
+    CarrinhoDTO dto = carrinhoService.criarCarrinho(idUsuario, null);
+    
+    // dto.getSessionId() é null para carrinhos autenticados — proteger contra NPE
+    ResponseEntity.BodyBuilder builder = ResponseEntity.ok();
+    if (dto.getSessionId() != null && !dto.getSessionId().isBlank()) {
+        builder.header("X-Cart-Session-Id", dto.getSessionId());
+    }
+    return builder.body(dto);
+}
+
 }

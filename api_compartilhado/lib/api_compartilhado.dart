@@ -12,6 +12,8 @@ export 'models/usuario_model.dart';
 export 'models/movimento_estoque_model.dart';
 export 'models/resultado_autenticacao.dart';
 export 'models/produto_imagem_model.dart';
+export 'models/carrinho_model.dart';
+
   
 
 // 3. Exporta todos os Services
@@ -27,4 +29,7 @@ export 'services/base_service.dart';
 export 'services/connectivity_service.dart';
 export 'services/servico_autenticacao.dart';
 export 'services/estoque_alerta_service.dart';
+export 'services/carrinho_service.dart';
+export 'services/carrinho_contador_service.dart';
+
 

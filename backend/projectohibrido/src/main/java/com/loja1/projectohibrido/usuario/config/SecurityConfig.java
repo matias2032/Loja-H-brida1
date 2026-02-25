@@ -66,37 +66,33 @@ public class SecurityConfig {
      * Configuração de CORS (Cross-Origin Resource Sharing)
      * Permite que o Flutter (rodando em localhost ou IP local) acesse a API
      */
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        
-        // Permite requisições de qualquer origem (localhost, 127.0.0.1, IPs locais, etc)
-        // Em produção, especifique domínios específicos
-        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
-        
-        // Métodos HTTP permitidos
-        configuration.setAllowedMethods(Arrays.asList(
-            "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"
-        ));
-        
-        // Headers permitidos
-        configuration.setAllowedHeaders(Arrays.asList("*"));
-        
-        // Headers expostos para o cliente
-        configuration.setExposedHeaders(Arrays.asList(
-            "Authorization", "Content-Type", "X-Total-Count"
-        ));
-        
-        // Permite credenciais (cookies, authorization headers)
-        configuration.setAllowCredentials(true);
-        
-        // Tempo de cache da configuração CORS (1 hora)
-        configuration.setMaxAge(3600L);
-        
-        // Aplica configuração para todas as rotas /api/**
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/api/**", configuration);
-        
-        return source;
-    }
+@Bean
+public CorsConfigurationSource corsConfigurationSource() {
+    CorsConfiguration configuration = new CorsConfiguration();
+    
+    // allowedOriginPatterns suporta "*" com allowCredentials=true
+    // allowedOrigins com "*" é INCOMPATÍVEL com allowCredentials=true
+    configuration.setAllowedOriginPatterns(Arrays.asList("*"));
+    
+    configuration.setAllowedMethods(Arrays.asList(
+        "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"
+    ));
+    
+    configuration.setAllowedHeaders(Arrays.asList("*"));
+    
+    // Uma única chamada — remover o setExposedHeaders duplicado
+ configuration.setExposedHeaders(Arrays.asList(
+    "Authorization", "Content-Type", "X-Total-Count", 
+    "X-Cart-Session-Id", "X-User-Id" 
+));
+    
+    configuration.setAllowCredentials(true);
+    configuration.setMaxAge(3600L);
+    
+    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+    // Aplica a TODAS as rotas, não só /api/**
+    source.registerCorsConfiguration("/**", configuration);
+    
+    return source;
+}
 }

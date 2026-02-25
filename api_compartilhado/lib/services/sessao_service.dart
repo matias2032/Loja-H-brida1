@@ -1,6 +1,8 @@
-
 import '../models/usuario_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:api_compartilhado/api_compartilhado.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class SessaoService {
   static final SessaoService instance = SessaoService._init();
@@ -11,6 +13,10 @@ class SessaoService {
   int? _idUsuario;
   String? _nomeUsuario;
   bool _isLogado = false;
+  String? _token;
+String? get token => _token;
+String? _cartSessionId;
+String? get cartSessionId => _cartSessionId;
 
   // Controle de sessão
   static const String _keyUltimaSessao = 'ultima_sessao_timestamp';
@@ -101,6 +107,7 @@ class SessaoService {
           if (nomeUsuarioSalvo != null) {
             _idUsuario = idUsuarioSalvo;
             _nomeUsuario = nomeUsuarioSalvo;
+            _cartSessionId = prefs.getString('cart_session_id');
             _isLogado = true;
 
             await marcarAppAtivo();
@@ -120,43 +127,118 @@ class SessaoService {
   // ── Definir utilizador logado ─────────────────────────────────────────────
 
   /// Recebe UsuarioModel (novo) — assinatura equivalente ao original.
-  Future<void> setUsuario(UsuarioModel usuario) async {
-    _usuarioAtual = usuario;
-    _idUsuario = usuario.idUsuario;   // ← campo renomeado no novo model
-    _nomeUsuario = usuario.nome;
-    _isLogado = true;
+Future<void> setUsuario(UsuarioModel usuario, {String? token}) async {
+  _usuarioAtual = usuario;
+  _idUsuario = usuario.idUsuario;
+  _nomeUsuario = usuario.nome;
+  _isLogado = true;
+  _token = token;
 
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('id_usuario', usuario.idUsuario);
-      await prefs.setString('nome_usuario', usuario.nome);
-      await prefs.setBool(_keyPrimeiroAcesso, false);
-      await marcarAppAtivo();
-      print('✅ Sessão salva: ${usuario.nome} (ID: ${usuario.idUsuario})');
-    } catch (e) {
-      print('⚠️ Erro ao salvar sessão: $e');
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('id_usuario', usuario.idUsuario);
+    await prefs.setString('nome_usuario', usuario.nome);
+    await prefs.setBool(_keyPrimeiroAcesso, false);
+    if (token != null) await prefs.setString('token', token);
+    await marcarAppAtivo();
+
+    // Apenas associa se já existe carrinho guest — não cria antecipadamente
+    if (_cartSessionId != null) {
+      await associarCarrinhoAoUsuario(usuario.idUsuario);
     }
+    // Se não há sessionId, o carrinho será criado naturalmente ao adicionar produto
+    // e associado ao utilizador via sessionId nesse momento
+
+    print('✅ Sessão iniciada para ${usuario.nome} (ID: ${usuario.idUsuario})');
+  } catch (e) {
+    print('⚠️ Erro ao salvar sessão: $e');
   }
+}
+
+// Tornar público para ser chamável do CarrinhoService
+Future<void> associarCarrinhoAoUsuario(int idUsuario) async {
+  try {
+    final sessionId = _cartSessionId;
+    if (sessionId == null) {
+      print('⚠️ Sem sessionId para associar ao usuário $idUsuario');
+      return;
+    }
+
+    final url = Uri.parse('${ApiConfig.carrinhosUrl}/associar-usuario');
+    final res = await http.patch(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({
+        'sessionId': sessionId,
+        'idUsuario': idUsuario,
+      }),
+    );
+    if (res.statusCode == 200) {
+      print('✅ Carrinho associado ao usuário $idUsuario');
+    } else {
+      print('⚠️ Falha ao associar carrinho: ${res.statusCode}');
+    }
+  } catch (e) {
+    print('⚠️ Erro ao associar carrinho: $e');
+  }
+}
+Future<void> _criarCarrinhoParaUsuario(int idUsuario) async {
+  try {
+    final url = Uri.parse('${ApiConfig.carrinhosUrl}/inicializar');
+    final res = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'idUsuario': idUsuario}),
+    );
+
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      // Carrinho criado com idUsuario — não precisa de sessionId
+      // mas guardamos se vier no header para consistência
+      final sessionId = res.headers['x-cart-session-id'];
+      if (sessionId != null && sessionId.isNotEmpty) {
+        await salvarCartSessionId(sessionId);
+      }
+      print('✅ Carrinho inicializado para usuário $idUsuario');
+    }
+  } catch (e) {
+    print('⚠️ Erro ao inicializar carrinho: $e');
+  }
+}
+
+Future<void> salvarCartSessionId(String sessionId) async {
+  _cartSessionId = sessionId;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString('cart_session_id', sessionId);
+}
+
+Future<void> carregarCartSessionId() async {
+  final prefs = await SharedPreferences.getInstance();
+  _cartSessionId = prefs.getString('cart_session_id');
+}
 
   // ── Logout ────────────────────────────────────────────────────────────────
 
-  Future<void> limparSessao() async {
-    _usuarioAtual = null;
-    _idUsuario = null;
-    _nomeUsuario = null;
-    _isLogado = false;
+Future<void> limparSessao() async {
+  _usuarioAtual = null;
+  _idUsuario = null;
+  _nomeUsuario = null;
+  _isLogado = false;
+  _token = null;
+  // NÃO limpar o _cartSessionId em memória — limpar apenas na BD-side
+  // Gerar novo sessionId para o próximo utilizador/guest
+  _cartSessionId = null;
 
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('id_usuario');
-      await prefs.remove('nome_usuario');
-      await prefs.remove(_keyUltimaSessao);
-      print('✅ Sessão limpa');
-    } catch (e) {
-      print('⚠️ Erro ao limpar sessão: $e');
-    }
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('id_usuario');
+    await prefs.remove('nome_usuario');
+    await prefs.remove(_keyUltimaSessao);
+    await prefs.remove('cart_session_id'); // sessionId antigo removido
+    print('✅ Sessão limpa');
+  } catch (e) {
+    print('⚠️ Erro ao limpar sessão: $e');
   }
-
+}
   // ── Validação de sessão activa ────────────────────────────────────────────
 
   Future<bool> validarSessao() async {

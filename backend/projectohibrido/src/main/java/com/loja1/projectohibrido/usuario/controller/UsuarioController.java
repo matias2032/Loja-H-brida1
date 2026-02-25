@@ -18,22 +18,13 @@ import java.util.List;
 @RequestMapping("/api/usuarios")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*") // Ajuste conforme necessário
+
 public class UsuarioController {
 
     private final UsuarioService usuarioService;
 
-    /**
-     * GET /api/usuarios
-     * Lista todos os usuários com filtros opcionais
-     * Filtros: ?perfil={idPerfil}&ativo={0|1}
-     * 
-     * Exemplos:
-     * - /api/usuarios (todos, exceto admins)
-     * - /api/usuarios?ativo=1 (apenas ativos)
-     * - /api/usuarios?perfil=3 (apenas clientes)
-     * - /api/usuarios?perfil=2&ativo=1 (funcionários ativos)
-     */
+   
+    
     @GetMapping
     public ResponseEntity<List<UsuarioResponse>> listarUsuarios(
             @RequestParam(required = false) Integer perfil,
