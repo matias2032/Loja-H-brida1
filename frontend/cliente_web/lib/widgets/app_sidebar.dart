@@ -99,7 +99,7 @@ class _AppSidebarState extends State<AppSidebar>
     final idPerfil = usuario.idPerfil;
 
     // Administrador tem acesso a tudo
-    if (idPerfil == 1) return true;
+    if (idPerfil == 1 || idPerfil == 4  ) return true;
 
     // Gerente
     if (idPerfil == 2) {

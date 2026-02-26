@@ -121,15 +121,18 @@ public ResponseEntity<CarrinhoDTO> buscarActivo(
     /**
      * Converte o carrinho em pedido, descontando o estoque.
      */
-    @PostMapping("/{idCarrinho}/converter-pedido")
-    public ResponseEntity<PedidoResponseDTO> converterEmPedido(
-            @PathVariable Integer idCarrinho,
-            @Valid @RequestBody PedidoRequestDTO req) {
+@PostMapping("/{idCarrinho}/converter-pedido")
+public ResponseEntity<PedidoResponseDTO> converterEmPedido(
+        @PathVariable Integer idCarrinho,
+        @Valid @RequestBody PedidoRequestDTO req) {
 
-        PedidoResponseDTO pedidoResponse = carrinhoService.converterEmPedido(idCarrinho, req);
-        return ResponseEntity.status(HttpStatus.CREATED).body(pedidoResponse);
-    }
+    // Temporário — remover após debug
+    System.out.println("📦 [CONVERTER] idCarrinho: " + idCarrinho);
+    System.out.println("📦 [CONVERTER] req: " + req);
 
+    PedidoResponseDTO pedidoResponse = carrinhoService.converterEmPedido(idCarrinho, req);
+    return ResponseEntity.status(HttpStatus.CREATED).body(pedidoResponse);
+}
     /**
      * Mescla o carrinho guest (cookie) ao carrinho do utilizador recém autenticado.
      * Chamado pelo frontend imediatamente após o login.

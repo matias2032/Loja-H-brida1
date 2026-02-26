@@ -220,17 +220,22 @@ class _CarrinhoScreenState extends State<CarrinhoScreen>
     );
   }
 
-  void _irParaCheckout() {
-    final idCarrinho = _carrinho?.idCarrinho;
-    if (idCarrinho == null) return;
+void _irParaCheckout() {
+  final carrinho = _carrinho;
+  if (carrinho == null || carrinho.itens.isEmpty) return;
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => CriarPedidoScreen(idCarrinho: idCarrinho),
+  print('🛒 [CHECKOUT] Navegando com carrinho ${carrinho.idCarrinho} — ${carrinho.itens.length} itens');
+
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => CriarPedidoScreen(
+        idCarrinho: carrinho.idCarrinho,
+        carrinho: carrinho, // ← passa o modelo já carregado
       ),
-    ).then((_) => _carregarCarrinho());
-  }
+    ),
+  ).then((_) => _carregarCarrinho());
+}
 
   // ── Debounce para input manual ─────────────────────────────────────────────
 

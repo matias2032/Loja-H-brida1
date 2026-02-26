@@ -6,7 +6,13 @@ import 'package:api_compartilhado/api_compartilhado.dart';
 
 class CriarPedidoScreen extends StatefulWidget {
   final int idCarrinho;
-  const CriarPedidoScreen({Key? key, required this.idCarrinho}) : super(key: key);
+  final CarrinhoModel? carrinho; // ← adicionar aqui, no Widget
+
+  const CriarPedidoScreen({
+    Key? key,
+    required this.idCarrinho,
+    this.carrinho,
+  }) : super(key: key);
 
   @override
   State<CriarPedidoScreen> createState() => _CriarPedidoScreenState();
@@ -22,15 +28,14 @@ class _CriarPedidoScreenState extends State<CriarPedidoScreen> {
   final _bairroCtrl     = TextEditingController();
   final _referenciaCtrl = TextEditingController();
   final _telefoneCtrl   = TextEditingController();
-  final CarrinhoService _carrinhoService = CarrinhoService();
-CarrinhoModel? _carrinho;
-bool _loadingCarrinho = true;
-
+final CarrinhoService _carrinhoService = CarrinhoService();
+CarrinhoModel? _carrinho;        
+bool _loadingCarrinho = true;    
 
   int _idTipoPagamento = 1; // padrão: dinheiro
   int _idTipoEntrega   = 1; // padrão: balcão
   bool _loading        = false;
-  bool _loadingCusto   = false;
+  // bool _loadingCusto   = false;
   
 
   double _custoDelivery = 0.0;
@@ -43,7 +48,12 @@ bool _loadingCarrinho = true;
    bool get _isDelivery   => _idTipoEntrega == 2;
 
 bool get _isLojaFisica => false; // checkout online — entrega sempre visível se necessário
-double get _totalBase       => _carrinho?.total ?? 0.0;
+double get _totalBase {
+  if (_carrinho == null) return 0.0;
+  if (_carrinho!.total > 0) return _carrinho!.total;
+  // Fallback: calcula a partir dos itens se o backend enviar total=0
+  return _carrinho!.itens.fold(0.0, (soma, item) => soma + item.subtotal);
+}
 double get _totalComEntrega => _isDelivery ? _totalBase + _custoDelivery : _totalBase;
 
   double get _troco {
@@ -53,15 +63,18 @@ double get _totalComEntrega => _isDelivery ? _totalBase + _custoDelivery : _tota
     return troco < 0 ? 0 : troco;
   }
 
-  @override
-  void initState() {
-    super.initState();
-print('🏁 [CRIAR] idCarrinho: ${widget.idCarrinho}');
-    _carregarCarrinho();          
-    _carregarCustoDelivery();
-    _carregarTiposPagamento(); // ADICIONADO
+@override
+void initState() {
+  super.initState();
+  if (widget.carrinho != null) {
+    _carrinho = widget.carrinho;       // widget já acessível aqui ✅
+    _loadingCarrinho = false;
+  } else {
+    _carregarCarrinho();
   }
-
+  _carregarCustoDelivery();
+  _carregarTiposPagamento();
+}
   @override
   void dispose() {
     _valorPagoCtrl.dispose();
@@ -77,7 +90,7 @@ print('🏁 [CRIAR] idCarrinho: ${widget.idCarrinho}');
   // ── Carrega custo de delivery da BD ────────────────────────────────────────
 
   Future<void> _carregarCustoDelivery() async {
-    setState(() => _loadingCusto = true);
+    // setState(() => _loadingCusto = true);
     try {
       final data = await _service.buscarTipoEntrega(2);
       setState(() {
@@ -88,7 +101,7 @@ print('🏁 [CRIAR] idCarrinho: ${widget.idCarrinho}');
       print('❌ Erro ao carregar custo delivery: $e');
       setState(() => _custoDelivery = 0.0);
     } finally {
-      setState(() => _loadingCusto = false);
+      // setState(() => _loadingCusto = false);
     }
   }
 
@@ -96,10 +109,12 @@ print('🏁 [CRIAR] idCarrinho: ${widget.idCarrinho}');
 Future<void> _carregarCarrinho() async {
   setState(() => _loadingCarrinho = true);
   try {
-    final carrinho = await _carrinhoService.buscarCarrinho(widget.idCarrinho);
+    print('🔄 [CHECKOUT] Buscando carrinho activo...');
+    final carrinho = await _carrinhoService.buscarCarrinhoActivo();
+    print('📦 [CHECKOUT] Carrinho recebido — ${carrinho?.itens.length ?? 0} itens');
     setState(() => _carrinho = carrinho);
   } catch (e) {
-    print('❌ Erro ao carregar carrinho: $e');
+    print('❌ [CHECKOUT] Erro ao carregar carrinho: $e');
   } finally {
     setState(() => _loadingCarrinho = false);
   }

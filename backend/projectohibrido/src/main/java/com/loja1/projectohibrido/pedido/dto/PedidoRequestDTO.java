@@ -32,7 +32,7 @@ public class PedidoRequestDTO {
     public String bairro;
     public String pontoReferencia;
 
-    @NotEmpty(message = "O pedido deve ter pelo menos um item")
+    
     @Valid
     public List<ItemPedidoRequestDTO> itens;
 }

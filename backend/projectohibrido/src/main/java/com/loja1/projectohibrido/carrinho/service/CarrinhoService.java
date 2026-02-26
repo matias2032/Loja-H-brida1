@@ -23,6 +23,7 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -32,6 +33,8 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CarrinhoService {
@@ -216,51 +219,100 @@ public CarrinhoDTO buscarCarrinhoActivo(Integer idUsuario, String cartSessionId)
     // Conversão para Pedido
     // ─────────────────────────────────────────────────────────────────────────
 
-    @Transactional
-    public PedidoResponseDTO converterEmPedido(Integer idCarrinho, PedidoRequestDTO pedidoReq) {
+   @Transactional
+public PedidoResponseDTO converterEmPedido(Integer idCarrinho, PedidoRequestDTO pedidoReq) {
 
-        // Lock pessimista no carrinho — impede dupla conversão concorrente
-        Carrinho carrinho = carrinhoRepo.findByIdWithLock(idCarrinho)
-                .orElseThrow(() -> new CarrinhoNotFoundException(idCarrinho));
+    log.info("🛒 [CONVERTER] Iniciando conversão | idCarrinho={} | idUsuario={} | idTipoPagamento={} | idTipoEntrega={}",
+        idCarrinho,
+        pedidoReq.getIdUsuario(),
+        pedidoReq.getIdTipoPagamento(),
+        pedidoReq.getIdTipoEntrega());
 
-        validarCarrinhoActivo(carrinho);
+    log.info("🛒 [CONVERTER] itens no DTO: {}",
+        pedidoReq.getItens() != null ? pedidoReq.getItens().size() + " itens" : "null ⚠️");
 
-        // Recarrega os itens via JOIN FETCH (findByIdWithLock não os traz)
-        carrinho = carrinhoRepo.findByIdWithItens(idCarrinho)
-                .orElseThrow(() -> new CarrinhoNotFoundException(idCarrinho));
+    // Lock pessimista no carrinho — impede dupla conversão concorrente
+    Carrinho carrinho = carrinhoRepo.findByIdWithLock(idCarrinho)
+            .orElseThrow(() -> {
+                log.error("❌ [CONVERTER] Carrinho {} não encontrado (lock)", idCarrinho);
+                return new CarrinhoNotFoundException(idCarrinho);
+            });
 
-        if (carrinho.getItens().isEmpty()) {
-            throw new CarrinhoVazioException(idCarrinho);
-        }
+    log.info("🔒 [CONVERTER] Lock adquirido | status={} | idUsuario={} | sessionId={}",
+        carrinho.getStatus(),
+        carrinho.getIdUsuario(),
+        carrinho.getSessionId());
 
-        // Valida estoque e desconta usando o método existente no ProdutoRepository
-        for (ItemCarrinho itemCarrinho : carrinho.getItens()) {
-            Integer idProduto = itemCarrinho.getProduto().getIdProduto();
-            Produto produto   = produtoRepo.findById(idProduto).orElseThrow(() ->
-                    new EntityNotFoundException("Produto não encontrado: " + idProduto));
+    validarCarrinhoActivo(carrinho);
+    log.info("✅ [CONVERTER] Carrinho activo confirmado");
 
-            if (produto.getQuantidadeEstoque() < itemCarrinho.getQuantidade()) {
-                throw new EstoqueInsuficienteException(
-                        idProduto,
-                        produto.getNomeProduto(),
-                        produto.getQuantidadeEstoque(),
-                        itemCarrinho.getQuantidade()
-                );
-            }
+    // Recarrega os itens via JOIN FETCH (findByIdWithLock não os traz)
+    carrinho = carrinhoRepo.findByIdWithItens(idCarrinho)
+            .orElseThrow(() -> {
+                log.error("❌ [CONVERTER] Carrinho {} não encontrado (JOIN FETCH)", idCarrinho);
+                return new CarrinhoNotFoundException(idCarrinho);
+            });
 
-            // Usa o método existente no ProdutoRepository para descontar o estoque
-            produtoRepo.ajustarEstoque(idProduto, -itemCarrinho.getQuantidade());
-        }
+    log.info("📦 [CONVERTER] Itens carregados do carrinho: {}", carrinho.getItens().size());
 
-        // Delega criação do pedido ao PedidoService (que conhece as suas próprias regras)
-        PedidoResponseDTO pedidoDTO = pedidoService.criarPedidoAPartirDoCarrinho(pedidoReq, carrinho);
-
-        // Marca carrinho como convertido — preserva histórico, evita re-uso
-        carrinho.setStatus("convertido");
-        carrinhoRepo.save(carrinho);
-
-        return pedidoDTO;
+    if (carrinho.getItens().isEmpty()) {
+        log.error("❌ [CONVERTER] Carrinho {} está vazio", idCarrinho);
+        throw new CarrinhoVazioException(idCarrinho);
     }
+
+    // Valida estoque e desconta usando o método existente no ProdutoRepository
+    for (ItemCarrinho itemCarrinho : carrinho.getItens()) {
+        Integer idProduto = itemCarrinho.getProduto().getIdProduto();
+
+        Produto produto = produtoRepo.findById(idProduto).orElseThrow(() -> {
+            log.error("❌ [CONVERTER] Produto {} não encontrado", idProduto);
+            return new EntityNotFoundException("Produto não encontrado: " + idProduto);
+        });
+
+        log.info("🔍 [CONVERTER] Produto={} | nomeProduto={} | estoqueDisponivel={} | quantidadeSolicitada={}",
+            idProduto,
+            produto.getNomeProduto(),
+            produto.getQuantidadeEstoque(),
+            itemCarrinho.getQuantidade());
+
+        if (produto.getQuantidadeEstoque() < itemCarrinho.getQuantidade()) {
+            log.warn("⚠️ [CONVERTER] Estoque insuficiente | produto={} | disponivel={} | solicitado={}",
+                idProduto,
+                produto.getQuantidadeEstoque(),
+                itemCarrinho.getQuantidade());
+            throw new EstoqueInsuficienteException(
+                    idProduto,
+                    produto.getNomeProduto(),
+                    produto.getQuantidadeEstoque(),
+                    itemCarrinho.getQuantidade()
+            );
+        }
+
+        // Usa o método existente no ProdutoRepository para descontar o estoque
+        produtoRepo.ajustarEstoque(idProduto, -itemCarrinho.getQuantidade());
+        log.info("📉 [CONVERTER] Estoque ajustado | produto={} | delta={} | novoEstoque={}",
+            idProduto,
+            -itemCarrinho.getQuantidade(),
+            produto.getQuantidadeEstoque() - itemCarrinho.getQuantidade());
+    }
+
+    log.info("🚀 [CONVERTER] Delegando criação do pedido ao PedidoService...");
+
+    // Delega criação do pedido ao PedidoService (que conhece as suas próprias regras)
+    PedidoResponseDTO pedidoDTO = pedidoService.criarPedidoAPartirDoCarrinho(pedidoReq, carrinho);
+
+    log.info("✅ [CONVERTER] Pedido criado | idPedido={} | reference={}",
+        pedidoDTO.getIdPedido(),
+        pedidoDTO.getReference());
+
+    // Marca carrinho como convertido — preserva histórico, evita re-uso
+    carrinho.setStatus("convertido");
+    carrinhoRepo.save(carrinho);
+
+    log.info("🏁 [CONVERTER] Carrinho {} marcado como convertido", idCarrinho);
+
+    return pedidoDTO;
+}
 
     // ─────────────────────────────────────────────────────────────────────────
     // Mesclagem Guest → Autenticado
