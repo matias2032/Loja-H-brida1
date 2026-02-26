@@ -30,7 +30,7 @@ class MyApp extends StatelessWidget {
       themeMode: ThemeMode.system,
       
       // ===== TELA INICIAL =====
-      initialRoute: '/',
+      initialRoute: '/menu',
       onGenerateRoute: RouteGenerator.generateRoute,
     
       );

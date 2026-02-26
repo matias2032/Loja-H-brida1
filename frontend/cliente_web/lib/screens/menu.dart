@@ -204,11 +204,12 @@ Widget build(BuildContext context) {
     ),
   );
 }
- PreferredSizeWidget _buildAppBar() {
+PreferredSizeWidget _buildAppBar() {
+  final bool isLogado = SessaoService.instance.isLogado;  // ← verifica sessão
+
   return AppBar(
     backgroundColor: Colors.white,
     elevation: 0,
-    // Botão que abre a Sidebar (importante para integração)
     leading: Builder(
       builder: (context) => IconButton(
         icon: const Icon(Icons.menu, color: Color(0xFF1A1A2E)),
@@ -223,90 +224,102 @@ Widget build(BuildContext context) {
         fontSize: 22,
       ),
     ),
-   actions: [
+    actions: [
 
-// Substituir todo o Stack do ícone de pedidos por:
-StreamBuilder<int>(
-  stream: _carrinhoContador.contadorStream,
-  initialData: _carrinhoContador.contadorAtual,
-  builder: (context, snapshot) {
-    final contador = snapshot.data ?? 0;
-    return Stack(
-      alignment: Alignment.topRight,
-      children: [
-        IconButton(
-          icon: const Icon(Icons.shopping_cart_outlined, color: Color(0xFF1A1A2E)),
-          tooltip: 'Carrinho',
-          onPressed: () async {
-            await Navigator.of(context).pushNamed('/carrinho');
-            _carrinhoContador.invalidarCache();
-            await _carrinhoContador.recarregarSeNecessario();
-          },
-        ),
-        if (contador > 0)
-          Positioned(
-            right: 6, top: 6,
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: Colors.red,
-                shape: BoxShape.circle,
-                boxShadow: [BoxShadow(
-                    color: Colors.red.withOpacity(0.5),
-                    blurRadius: 4, spreadRadius: 1)],
-              ),
-              constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
-              child: Center(
-                child: Text('$contador',
-                    style: const TextStyle(
-                        color: Colors.white, fontSize: 11,
-                        fontWeight: FontWeight.bold)),
-              ),
+      // ── BOTÃO LOGIN — apenas se NÃO estiver logado ──────────────────
+      if (!isLogado)
+        TextButton.icon(
+          onPressed: () => Navigator.of(context).pushNamed('/login'),
+          icon: const Icon(Icons.login, color: Color(0xFF1A1A2E), size: 18),
+          label: const Text(
+            'Login',
+            style: TextStyle(
+              color: Color(0xFF1A1A2E),
+              fontWeight: FontWeight.w600,
             ),
           ),
-      ],
-    );
-  },
-),
-
-  // ── FILTROS (MANTIDO) ──
-  Stack(
-    alignment: Alignment.topRight,
-    children: [
-      IconButton(
-        icon: Icon(
-          _filtrosVisiveis ? Icons.filter_list_off : Icons.filter_list,
-          color: _temFiltrosActivos
-              ? Theme.of(context).primaryColor
-              : const Color(0xFF1A1A2E),
         ),
-        onPressed: () => setState(() => _filtrosVisiveis = !_filtrosVisiveis),
-        tooltip: 'Filtros',
+
+      // ── CARRINHO ────────────────────────────────────────────────────
+      StreamBuilder<int>(
+        stream: _carrinhoContador.contadorStream,
+        initialData: _carrinhoContador.contadorAtual,
+        builder: (context, snapshot) {
+          final contador = snapshot.data ?? 0;
+          return Stack(
+            alignment: Alignment.topRight,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.shopping_cart_outlined, color: Color(0xFF1A1A2E)),
+                tooltip: 'Carrinho',
+                onPressed: () async {
+                  await Navigator.of(context).pushNamed('/carrinho');
+                  _carrinhoContador.invalidarCache();
+                  await _carrinhoContador.recarregarSeNecessario();
+                },
+              ),
+              if (contador > 0)
+                Positioned(
+                  right: 6, top: 6,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                      boxShadow: [BoxShadow(
+                          color: Colors.red.withOpacity(0.5),
+                          blurRadius: 4, spreadRadius: 1)],
+                    ),
+                    constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                    child: Center(
+                      child: Text('$contador',
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 11,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
       ),
-      if (_temFiltrosActivos)
-        Positioned(
-          top: 8,
-          right: 8,
-          child: Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(
-              color: Colors.red,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 1.5),
-            ),
-          ),
-        ),
-    ],
-  ),
 
-  // ── ATUALIZAR (MANTIDO) ──
-  IconButton(
-    icon: const Icon(Icons.refresh, color: Color(0xFF1A1A2E)),
-    onPressed: _carregarDados,
-    tooltip: 'Actualizar',
-  ),
-],
+      // ── FILTROS ─────────────────────────────────────────────────────
+      Stack(
+        alignment: Alignment.topRight,
+        children: [
+          IconButton(
+            icon: Icon(
+              _filtrosVisiveis ? Icons.filter_list_off : Icons.filter_list,
+              color: _temFiltrosActivos
+                  ? Theme.of(context).primaryColor
+                  : const Color(0xFF1A1A2E),
+            ),
+            onPressed: () => setState(() => _filtrosVisiveis = !_filtrosVisiveis),
+            tooltip: 'Filtros',
+          ),
+          if (_temFiltrosActivos)
+            Positioned(
+              top: 8, right: 8,
+              child: Container(
+                width: 10, height: 10,
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1.5),
+                ),
+              ),
+            ),
+        ],
+      ),
+
+      // ── ATUALIZAR ───────────────────────────────────────────────────
+      IconButton(
+        icon: const Icon(Icons.refresh, color: Color(0xFF1A1A2E)),
+        onPressed: _carregarDados,
+        tooltip: 'Actualizar',
+      ),
+    ],
   );
 }
   Widget _buildBody() {
