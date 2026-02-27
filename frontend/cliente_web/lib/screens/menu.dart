@@ -4,7 +4,6 @@ import 'detalhes_produto.dart';
 import '../controllers/pedido_ativo_controller.dart';
 import '../widgets/pedido_ativo_banner.dart';
 import  '../widgets/app_sidebar.dart';
-import '../widgets/estoque_alerta_popup.dart';
 import 'package:api_compartilhado/api_compartilhado.dart';
 
 
@@ -199,7 +198,7 @@ Widget build(BuildContext context) {
           onDesativado: _carregarDados,
            // refresh após desativar
         ),
-        const EstoqueAlertaPopup(),
+        // const EstoqueAlertaPopup(),
       ],
     ),
   );

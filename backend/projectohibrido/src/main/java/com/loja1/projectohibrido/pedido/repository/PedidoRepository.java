@@ -62,5 +62,8 @@ List<Object[]> desempenhoUsuarios(@Param("dataInicio") LocalDateTime dataInicio)
 
 // Adicionar este método ao PedidoRepository
 List<Pedido> findByIdUsuarioAndStatusPedidoOrderByDataPedidoDesc(Integer idUsuario, String statusPedido);
+
+List<Pedido> findByIdUsuarioAndStatusPedidoAndIdTipoOrigemPedidoOrderByDataPedidoDesc(
+    Integer idUsuario, String statusPedido, Integer idTipoOrigemPedido);
 }
 

@@ -31,6 +31,8 @@ public class PedidoRequestDTO {
     public String enderecoJson;
     public String bairro;
     public String pontoReferencia;
+    public String nomeCliente;
+    public String apelidoCliente;
 
     
     @Valid

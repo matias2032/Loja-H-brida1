@@ -466,4 +466,26 @@ Future<void> desativarPedido(int idPedido) async {
       rethrow;
     }
   }
+
+  Future<List<Pedido>> listarPorFinalizarLojaFisica(int idUsuario) async {
+  try {
+    final response = await http
+        .get(
+          Uri.parse(
+            '${ApiConfig.pedidosUrl}/usuario/$idUsuario/status/${Uri.encodeComponent('por finalizar')}/origem/2',
+          ),
+          headers: ApiConfig.defaultHeaders,
+        )
+        .timeout(ApiConfig.timeout);
+
+    if (response.statusCode == 200) {
+      final List data = json.decode(utf8.decode(response.bodyBytes));
+      return data.map((e) => Pedido.fromJson(e)).toList();
+    }
+    throw Exception('Erro ao listar: ${response.statusCode}');
+  } catch (e) {
+    print('❌ Erro em listarPorFinalizarLojaFisica: $e');
+    rethrow;
+  }
+}
 }

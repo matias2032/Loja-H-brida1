@@ -32,7 +32,7 @@ final CarrinhoService _carrinhoService = CarrinhoService();
 CarrinhoModel? _carrinho;        
 bool _loadingCarrinho = true;    
 
-  int _idTipoPagamento = 1; // padrão: dinheiro
+  int _idTipoPagamento = 2; // padrão: dinheiro
   int _idTipoEntrega   = 1; // padrão: balcão
   bool _loading        = false;
   // bool _loadingCusto   = false;
@@ -47,7 +47,7 @@ bool _loadingCarrinho = true;
   bool get _isDinheiro   => _idTipoPagamento == 1;
    bool get _isDelivery   => _idTipoEntrega == 2;
 
-bool get _isLojaFisica => false; // checkout online — entrega sempre visível se necessário
+// bool get _isLojaFisica => false; // checkout online — entrega sempre visível se necessário
 double get _totalBase {
   if (_carrinho == null) return 0.0;
   if (_carrinho!.total > 0) return _carrinho!.total;
@@ -121,24 +121,23 @@ Future<void> _carregarCarrinho() async {
 }
 
   // ADICIONADO: carrega métodos de pagamento da BD
-  Future<void> _carregarTiposPagamento() async {
-    setState(() => _loadingPagamento = true);
-    try {
-      final lista = await _service.listarTiposPagamento();
-      setState(() {
-        _tiposPagamento = lista;
-        // garante que o valor padrão existe na lista carregada
-        if (_tiposPagamento.isNotEmpty &&
-            !_tiposPagamento.any((t) => t['idTipoPagamento'] == _idTipoPagamento)) {
-          _idTipoPagamento = _tiposPagamento.first['idTipoPagamento'] as int;
-        }
-      });
-    } catch (e) {
-      print('❌ Erro ao carregar tipos de pagamento: $e');
-    } finally {
-      setState(() => _loadingPagamento = false);
-    }
+Future<void> _carregarTiposPagamento() async {
+  setState(() => _loadingPagamento = true);
+  try {
+    final lista = await _service.listarTiposPagamento();
+    setState(() {
+      // Remove "Dinheiro em Espécie" — não disponível no checkout online
+      _tiposPagamento = lista.where((t) => t['idTipoPagamento'] != 1).toList();
+      if (_tiposPagamento.isNotEmpty) {
+        _idTipoPagamento = _tiposPagamento.first['idTipoPagamento'] as int;
+      }
+    });
+  } catch (e) {
+    print('❌ Erro ao carregar tipos de pagamento: $e');
+  } finally {
+    setState(() => _loadingPagamento = false);
   }
+}
 
   // ── Confirmação ────────────────────────────────────────────────────────────
 
@@ -400,88 +399,65 @@ print('🏁 [CRIAR] Convertendo carrinho ${widget.idCarrinho}');
               ),
             ],
           ]),
+// ── Tipo de Entrega — SEMPRE VISÍVEL ─────────────────────────────────
+const SizedBox(height: 20),
+_secao('Tipo de Entrega', [
+  Row(
+    children: [
+      Expanded(
+        child: _botaoEntrega(
+          label: '🏪 No Balcão',
+          selected: _idTipoEntrega == 1,
+          onTap: () => setState(() => _idTipoEntrega = 1),
+        ),
+      ),
+      const SizedBox(width: 10),
+      Expanded(
+        child: _botaoEntrega(
+          label: '🛵 Delivery',
+          selected: _idTipoEntrega == 2,
+          onTap: () => setState(() => _idTipoEntrega = 2),
+        ),
+      ),
+    ],
+  ),
+]),
 
-          // ── Tipo de Entrega (apenas Loja Física) ─────────────────────────
-          if (_isLojaFisica) ...[
-            const SizedBox(height: 20),
-            _secao('Tipo de Entrega', [
-              Row(
-                children: [
-                  Expanded(
-                    child: _botaoEntrega(
-                      label: '🏪 No Balcão',
-                      selected: _idTipoEntrega == 1,
-                      onTap: () => setState(() => _idTipoEntrega = 1),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _botaoEntrega(
-                      label: '🛵 Delivery',
-                      selected: _idTipoEntrega == 2,
-                      onTap: () => setState(() => _idTipoEntrega = 2),
-                    ),
-                  ),
-                ],
-              ),
-            ]),
-          ],
+// ── Dados do Cliente — Balcão (opcional) ─────────────────────────────
+if (!_isDelivery) ...[
+  const SizedBox(height: 20),
+  _secao('Dados do Cliente (opcional)', [
+    TextField(controller: _nomeCtrl,    decoration: _inputDecoration('Nome')),
+    const SizedBox(height: 10),
+    TextField(controller: _apelidoCtrl, decoration: _inputDecoration('Apelido')),
+    const SizedBox(height: 10),
+    TextField(
+      controller: _telefoneCtrl,
+      keyboardType: TextInputType.phone,
+      decoration: _inputDecoration('Telefone'),
+    ),
+  ]),
+],
 
-          // ── Dados do Cliente — Balcão (opcional) ─────────────────────────
-          // CORRIGIDO: campos nome, apelido e telefone aparecem também para balcão
-          if (_isLojaFisica && !_isDelivery) ...[
-            const SizedBox(height: 20),
-            _secao('Dados do Cliente (opcional)', [
-              TextField(
-                controller: _nomeCtrl,
-                decoration: _inputDecoration('Nome'),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _apelidoCtrl,
-                decoration: _inputDecoration('Apelido'),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _telefoneCtrl,
-                keyboardType: TextInputType.phone,
-                decoration: _inputDecoration('Telefone'),
-              ),
-            ]),
-          ],
-
-          // ── Dados do Cliente — Delivery (bairro e ref. obrigatórios) ─────
-          if (_isDelivery) ...[
-            const SizedBox(height: 20),
-            _secao('Dados do Cliente', [
-              TextField(
-                controller: _nomeCtrl,
-                decoration: _inputDecoration('Nome'),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _apelidoCtrl,
-                decoration: _inputDecoration('Apelido'),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _telefoneCtrl,
-                keyboardType: TextInputType.phone,
-                decoration: _inputDecoration('Telefone'),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _bairroCtrl,
-                decoration: _inputDecoration('Bairro *'),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _referenciaCtrl,
-                decoration: _inputDecoration('Ponto de referência *'),
-              ),
-            ]),
-          ],
-
+// ── Dados do Cliente — Delivery ───────────────────────────────────────
+if (_isDelivery) ...[
+  const SizedBox(height: 20),
+  _secao('Dados do Cliente', [
+    TextField(controller: _nomeCtrl,    decoration: _inputDecoration('Nome')),
+    const SizedBox(height: 10),
+    TextField(controller: _apelidoCtrl, decoration: _inputDecoration('Apelido')),
+    const SizedBox(height: 10),
+    TextField(
+      controller: _telefoneCtrl,
+      keyboardType: TextInputType.phone,
+      decoration: _inputDecoration('Telefone'),
+    ),
+    const SizedBox(height: 10),
+    TextField(controller: _bairroCtrl,     decoration: _inputDecoration('Bairro *')),
+    const SizedBox(height: 10),
+    TextField(controller: _referenciaCtrl, decoration: _inputDecoration('Ponto de referência *')),
+  ]),
+],
           const SizedBox(height: 32),
 
           // ── Botão confirmar ──────────────────────────────────────────────

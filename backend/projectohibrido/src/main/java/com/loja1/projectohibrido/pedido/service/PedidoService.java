@@ -74,6 +74,7 @@ public PedidoResponseDTO criarPedido(PedidoRequestDTO dto) {
                 .valorPagoManual(BigDecimal.ZERO)
                 .troco(BigDecimal.ZERO)
                 .ocultoCliente((short) 0)
+                
             
                 .build();
 
@@ -617,27 +618,31 @@ public PedidoResponseDTO criarPedidoAPartirDoCarrinho(
     pedidoRepository.desativarPedidosDoUsuario(pedidoReq.idUsuario);
 
     // 2. Cria o cabeçalho do pedido
-    Pedido pedido = Pedido.builder()
-            .reference(gerarReference())
-            .idUsuario(pedidoReq.idUsuario)
-            .telefone(pedidoReq.telefone)
-            .email(pedidoReq.email)
-            .idTipoPagamento(pedidoReq.idTipoPagamento)
-            .idTipoEntrega(pedidoReq.idTipoEntrega)
-            .idTipoOrigemPedido(pedidoReq.idTipoOrigemPedido != null
-                    ? pedidoReq.idTipoOrigemPedido : 1) // 1 = online/loja virtual
-            .dataPedido(LocalDateTime.now())
-            .statusPedido("por finalizar")
-            .ativo(true)
-            .notificacaoVista((short) 0)
-            .total(BigDecimal.ZERO)          // recalculado abaixo
-            .enderecoJson(pedidoReq.enderecoJson)
-            .bairro(pedidoReq.bairro)
-            .pontoReferencia(pedidoReq.pontoReferencia)
-            .valorPagoManual(BigDecimal.ZERO)
-            .troco(BigDecimal.ZERO)
-            .ocultoCliente((short) 0)
-            .build();
+// Substituir o bloco do builder (apenas as linhas novas em destaque):
+Pedido pedido = Pedido.builder()
+        .reference(gerarReference())
+        .idUsuario(pedidoReq.idUsuario)
+        .telefone(pedidoReq.telefone)
+        .email(pedidoReq.email)
+        .idTipoPagamento(pedidoReq.idTipoPagamento)
+        .idTipoEntrega(pedidoReq.idTipoEntrega)
+        .idTipoOrigemPedido(pedidoReq.idTipoOrigemPedido != null
+                ? pedidoReq.idTipoOrigemPedido : 1)
+        .dataPedido(LocalDateTime.now())
+        .statusPedido("pendente")            // ← online = pendente
+        .ativo(false)
+        //  .ativo(true)
+        .notificacaoVista((short) 0)
+        .total(BigDecimal.ZERO)
+        .enderecoJson(pedidoReq.enderecoJson)
+        .bairro(pedidoReq.bairro)
+        .pontoReferencia(pedidoReq.pontoReferencia)
+        .nomeCliente(pedidoReq.nomeCliente)       // ← NOVO
+        .apelidoCliente(pedidoReq.apelidoCliente) // ← NOVO
+        .valorPagoManual(BigDecimal.ZERO)
+        .troco(BigDecimal.ZERO)
+        .ocultoCliente((short) 0)
+        .build();
 
     pedido = pedidoRepository.save(pedido);
 
@@ -686,5 +691,17 @@ public List<PedidoResponseDTO> listarPorUsuarioEStatus(Integer idUsuario, String
             .map(this::toResponseDTO)
             .collect(Collectors.toList());
 }
+
+@Transactional(readOnly = true)
+public List<PedidoResponseDTO> listarPorUsuarioStatusEOrigem(
+        Integer idUsuario, String status, Integer origem) {
+    return pedidoRepository
+            .findByIdUsuarioAndStatusPedidoAndIdTipoOrigemPedidoOrderByDataPedidoDesc(
+                idUsuario, status, origem)
+            .stream()
+            .map(this::toResponseDTO)
+            .collect(Collectors.toList());
+}
+
 
 }

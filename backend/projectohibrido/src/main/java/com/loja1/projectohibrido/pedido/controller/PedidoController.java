@@ -181,4 +181,13 @@ public ResponseEntity<PedidoResponseDTO> ativarPedido(
     PedidoResponseDTO response = pedidoService.ativarPedido(idPedido);
     return ResponseEntity.ok(response);
 }
+
+@GetMapping("/usuario/{idUsuario}/status/{status}/origem/{origem}")
+public ResponseEntity<List<PedidoResponseDTO>> listarPorUsuarioStatusEOrigem(
+        @PathVariable Integer idUsuario,
+        @PathVariable String status,
+        @PathVariable Integer origem) {
+    return ResponseEntity.ok(
+        pedidoService.listarPorUsuarioStatusEOrigem(idUsuario, status, origem));
+}
 }
