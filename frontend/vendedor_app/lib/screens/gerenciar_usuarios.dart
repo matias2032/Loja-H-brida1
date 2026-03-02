@@ -339,7 +339,7 @@ class _UsuarioListScreenState extends State<UsuarioListScreen> {
             icon: const Icon(Icons.person_add),
             tooltip: 'Novo Usuário',
             onPressed: () async {
-              await Navigator.of(context).pushNamed('/cadastro_usuario');
+              await Navigator.of(context).pushNamed('/cadastrar_usuarios');
               setState(() {
                 _usuariosFuture = _loadUsuarios();
               });

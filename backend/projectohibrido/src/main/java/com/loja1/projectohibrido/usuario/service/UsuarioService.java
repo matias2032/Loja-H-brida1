@@ -83,18 +83,19 @@ public class UsuarioService {
         }
 
         // Cria a entidade
-        Usuario usuario = Usuario.builder()
-                .nome(request.getNome())
-                .apelido(request.getApelido())
-                .email(request.getEmail())
-                .senhaHash(passwordEncoder.encode(request.getSenha()))
-                .telefone(request.getTelefone())
-                .idPerfil(request.getIdPerfil())
-                .idProvincia(request.getIdProvincia())
-                .idCidade(request.getIdCidade())
-                .ativo(1) // Sempre inicia como ativo
-                .primeiraSenha(1) // Marcado como primeira senha
-                .build();
+       Usuario usuario = Usuario.builder()
+        .nome(request.getNome())
+        .apelido(request.getApelido())
+        .email(request.getEmail())
+        .senhaHash(passwordEncoder.encode(request.getSenha()))
+        .telefone(request.getTelefone())
+        .idPerfil(request.getIdPerfil())
+        .idProvincia(request.getIdProvincia())
+        .idCidade(request.getIdCidade())
+        .ativo(1)
+        // idPerfil 4 = Cliente → primeiraSenha = 0; outros → primeiraSenha = 1
+        .primeiraSenha(request.getIdPerfil() == 4 ? 0 : 1)
+        .build();
 
         Usuario usuarioSalvo = usuarioRepository.save(usuario);
         log.info("Usuário criado com sucesso. ID: {}", usuarioSalvo.getIdUsuario());

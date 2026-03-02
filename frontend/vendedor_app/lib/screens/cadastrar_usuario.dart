@@ -11,6 +11,7 @@ class UsuarioFormScreen extends StatefulWidget {
 }
 
 class _UsuarioFormScreenState extends State<UsuarioFormScreen> {
+  int _idPerfil = 3; // padrão: Funcionário
   final _formKey = GlobalKey<FormState>();
   
   final TextEditingController _nomeController = TextEditingController();
@@ -51,15 +52,15 @@ try {
     telefone: _telefoneController.text.trim().isEmpty
         ? null
         : _telefoneController.text.trim(),
-    idPerfil: 3,
+   idPerfil: _idPerfil,
   );
 
   if (mounted) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text(
-          '✅ Funcionário cadastrado com sucesso!\nSenha padrão: 12345678',
-        ),
+    content: Text(
+  'Usuário cadastrado com sucesso!\nSenha padrão: 12345678',
+),
         backgroundColor: Colors.green,
         duration: Duration(seconds: 4),
       ),
@@ -88,7 +89,7 @@ try {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Cadastrar Funcionário'),
+        title: const Text('Cadastrar Usuário'),
         backgroundColor: Colors.deepOrange,
       ),
       body: SingleChildScrollView(
@@ -209,6 +210,26 @@ try {
                 ),
                 keyboardType: TextInputType.phone,
               ),
+              const SizedBox(height: 16),
+
+// Cargo
+DropdownButtonFormField<int>(
+  value: _idPerfil,
+  decoration: InputDecoration(
+    labelText: 'Cargo *',
+    prefixIcon: const Icon(Icons.work),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+  ),
+  items: const [
+    DropdownMenuItem(value: 3, child: Text('Funcionário')),
+    DropdownMenuItem(value: 2, child: Text('Gerente')),
+  ],
+  onChanged: (v) {
+    if (v != null) setState(() => _idPerfil = v);
+  },
+),
               const SizedBox(height: 30),
 
               // Botão Salvar
@@ -235,7 +256,7 @@ try {
                         )
                       : const Icon(Icons.save),
                   label: Text(
-                    _isLoading ? 'Salvando...' : 'Cadastrar Funcionário',
+                    _isLoading ? 'Salvando...' : 'Cadastrar Usuário',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,

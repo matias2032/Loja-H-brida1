@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'screens/gerenciar_usuarios.dart';
 import 'screens/detalhes_usuario.dart';
+import 'screens/cadastrar_usuario.dart';
 import 'screens/categorias_list_screen.dart';
 import 'screens/categoria_form_screen.dart';
 import 'screens/marcas_list_screen.dart';
@@ -18,6 +19,7 @@ import 'screens/dashboard.dart';
 import 'screens/alterar_senha.dart';
 import 'screens/editar_usuario.dart';
 import 'package:api_compartilhado/api_config.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -111,7 +113,10 @@ class MyApp extends StatelessWidget {
             return MaterialPageRoute(
               builder: (context) => const UsuarioListScreen(),
             );
-
+case '/cadastrar_usuarios':
+            return MaterialPageRoute(
+              builder: (context) => const UsuarioFormScreen(),
+            );
             
               case '/editar_usuario':
                 return MaterialPageRoute(

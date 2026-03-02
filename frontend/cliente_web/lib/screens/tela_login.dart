@@ -163,7 +163,28 @@ child: const Icon(
                     keyboardType: TextInputType.emailAddress,
                   ),
                   const SizedBox(height: 20),
-
+  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Não tem conta? ',
+                        style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.of(context).pushNamed('/cadastrar_usuario'),
+                        child: const Text(
+                          'Clique aqui',
+                          style: TextStyle(
+                            color: Colors.deepOrange,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            decoration: TextDecoration.underline,
+                            decorationColor: Colors.deepOrange,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                   // Campo Senha
                   TextField(
                     controller: _passwordController,

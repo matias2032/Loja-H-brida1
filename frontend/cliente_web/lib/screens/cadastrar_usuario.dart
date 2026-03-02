@@ -1,7 +1,6 @@
-// lib/screens/cadastrar_usuario.dart (VERSÃO COM SENHA PADRÃO E PERFIL FUNCIONÁRIO)
-
 import 'package:flutter/material.dart';
 import 'package:api_compartilhado/api_compartilhado.dart';
+
 
 class UsuarioFormScreen extends StatefulWidget {
   const UsuarioFormScreen({super.key});
@@ -12,15 +11,19 @@ class UsuarioFormScreen extends StatefulWidget {
 
 class _UsuarioFormScreenState extends State<UsuarioFormScreen> {
   final _formKey = GlobalKey<FormState>();
-  
+
   final TextEditingController _nomeController = TextEditingController();
   final TextEditingController _apelidoController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _telefoneController = TextEditingController();
- 
- final UsuarioService _usuarioService = UsuarioService();
+  final TextEditingController _senhaController = TextEditingController();
+  final TextEditingController _confirmarSenhaController = TextEditingController();
+
+  final UsuarioService _usuarioService = UsuarioService();
 
   bool _isLoading = false;
+  bool _senhaVisivel = false;
+  bool _confirmarSenhaVisivel = false;
 
   @override
   void dispose() {
@@ -28,45 +31,41 @@ class _UsuarioFormScreenState extends State<UsuarioFormScreen> {
     _apelidoController.dispose();
     _emailController.dispose();
     _telefoneController.dispose();
+    _senhaController.dispose();
+    _confirmarSenhaController.dispose();
     super.dispose();
   }
 
   Future<void> _salvarUsuario() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
-    // SUBSTITUIR o bloco try-catch (aproximadamente linha 50-70) por:
+    try {
+ 
 
-try {
-  // Spring Boot recebe a senha em texto simples e faz o hash BCrypt internamente
-  await _usuarioService.criarUsuario(
-    nome: _nomeController.text.trim(),
-    apelido: _apelidoController.text.trim(),
-    email: _emailController.text.trim().toLowerCase(),
-    telefone: _telefoneController.text.trim().isEmpty
-        ? null
-        : _telefoneController.text.trim(),
-    idPerfil: 3,
-  );
+await _usuarioService.criarUsuario(
+  nome: _nomeController.text.trim(),
+  apelido: _apelidoController.text.trim(),
+  email: _emailController.text.trim().toLowerCase(),
+  telefone: _telefoneController.text.trim().isEmpty
+      ? null
+      : _telefoneController.text.trim(),
+  senha: _senhaController.text, // texto simples → BCrypt no backend
+  idPerfil: 4,
+);
 
-  if (mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          '✅ Funcionário cadastrado com sucesso!\nSenha padrão: 12345678',
-        ),
-        backgroundColor: Colors.green,
-        duration: Duration(seconds: 4),
-      ),
-    );
-    Navigator.of(context).pop(true);
-  }
-} catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Conta criada com sucesso! Faça login para continuar.'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 4),
+          ),
+        );
+        Navigator.of(context).pop(true);
+      }
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -76,11 +75,7 @@ try {
         );
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -88,7 +83,7 @@ try {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Cadastrar Funcionário'),
+        title: const Text('Criar Conta'),
         backgroundColor: Colors.deepOrange,
       ),
       body: SingleChildScrollView(
@@ -98,43 +93,6 @@ try {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 🔥 INFO: Alerta sobre senha padrão
-              Container(
-                padding: const EdgeInsets.all(16),
-                margin: const EdgeInsets.only(bottom: 20),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue.shade200),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, color: Colors.blue.shade700),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Informação Importante',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue.shade700,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'O usuário será cadastrado como Funcionário com senha padrão: 12345678\n'
-                            'No primeiro login, será obrigado a criar uma nova senha.',
-                            style: TextStyle(fontSize: 13),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
               // Nome
               TextFormField(
                 controller: _nomeController,
@@ -209,6 +167,52 @@ try {
                 ),
                 keyboardType: TextInputType.phone,
               ),
+              const SizedBox(height: 16),
+
+              // Senha
+              TextFormField(
+                controller: _senhaController,
+                obscureText: !_senhaVisivel,
+                decoration: InputDecoration(
+                  labelText: 'Senha *',
+                  prefixIcon: const Icon(Icons.lock),
+                  suffixIcon: IconButton(
+                    icon: Icon(_senhaVisivel ? Icons.visibility_off : Icons.visibility),
+                    onPressed: () => setState(() => _senhaVisivel = !_senhaVisivel),
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) return 'A senha é obrigatória';
+                  if (value.length < 8) return 'A senha deve ter pelo menos 8 caracteres';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Confirmar Senha
+              TextFormField(
+                controller: _confirmarSenhaController,
+                obscureText: !_confirmarSenhaVisivel,
+                decoration: InputDecoration(
+                  labelText: 'Confirmar Senha *',
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    icon: Icon(_confirmarSenhaVisivel ? Icons.visibility_off : Icons.visibility),
+                    onPressed: () => setState(() => _confirmarSenhaVisivel = !_confirmarSenhaVisivel),
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) return 'Confirme a sua senha';
+                  if (value != _senhaController.text) return 'As senhas não coincidem';
+                  return null;
+                },
+              ),
               const SizedBox(height: 30),
 
               // Botão Salvar
@@ -235,7 +239,7 @@ try {
                         )
                       : const Icon(Icons.save),
                   label: Text(
-                    _isLoading ? 'Salvando...' : 'Cadastrar Funcionário',
+                    _isLoading ? 'Criando conta...' : 'Criar Conta',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,

@@ -14,6 +14,7 @@ import 'screens/alterar_senha.dart';
 import 'screens/carrinho_screen.dart';
 import 'screens/criar_pedido.dart';
 import 'screens/editar_usuario.dart';
+import 'screens/cadastrar_usuario.dart';
 
 
 class RouteGenerator {
@@ -68,6 +69,9 @@ class RouteGenerator {
               builder: (context) => const UsuarioListScreen(),
             );
 
+
+   case '/cadastrar_usuario':
+           return MaterialPageRoute(builder: (_) => const UsuarioFormScreen());
             
               case '/editar_usuario':
                 return MaterialPageRoute(

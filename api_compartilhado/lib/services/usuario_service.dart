@@ -9,21 +9,22 @@ class UsuarioService {
   Uri _uri([String path = '']) => Uri.parse('${ApiConfig.usuariosUrl}$path');
 
   /// POST /api/usuarios — cria funcionário com senha padrão
-  Future<UsuarioModel> criarUsuario({
-    required String nome,
-    required String apelido,
-    required String email,
-    String? telefone,
-    int idPerfil = 3,
-  }) async {
-    final body = jsonEncode({
-      'nome': nome,
-      'apelido': apelido,
-      'email': email,
-      'senha': '12345678', // Spring Boot faz o hash
-      'telefone': telefone,
-      'idPerfil': idPerfil,
-    });
+Future<UsuarioModel> criarUsuario({
+  required String nome,
+  required String apelido,
+  required String email,
+  String? telefone,
+  String? senha,        // ← ADICIONAR
+  int idPerfil = 3,
+}) async {
+  final body = jsonEncode({
+    'nome': nome,
+    'apelido': apelido,
+    'email': email,
+    'senha': senha ?? '12345678', // senha passada ou padrão para admin
+    'telefone': telefone,
+    'idPerfil': idPerfil,
+  });
 
     final response = await http
         .post(
