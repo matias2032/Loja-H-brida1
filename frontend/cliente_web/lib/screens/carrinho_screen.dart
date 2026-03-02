@@ -224,17 +224,22 @@ void _irParaCheckout() {
   final carrinho = _carrinho;
   if (carrinho == null || carrinho.itens.isEmpty) return;
 
-  print('🛒 [CHECKOUT] Navegando com carrinho ${carrinho.idCarrinho} — ${carrinho.itens.length} itens');
-
   Navigator.push(
     context,
     MaterialPageRoute(
       builder: (_) => CriarPedidoScreen(
         idCarrinho: carrinho.idCarrinho,
-        carrinho: carrinho, // ← passa o modelo já carregado
+        carrinho: carrinho,
       ),
     ),
-  ).then((_) => _carregarCarrinho());
+  ).then((resultado) {
+    if (resultado == true) {
+      // Pedido criado — propaga o sinal para cima (DetalhesProduto → Menu)
+      Navigator.pop(context, true); // ← ADICIONAR ISTO
+    } else {
+      _carregarCarrinho();
+    }
+  });
 }
 
   // ── Debounce para input manual ─────────────────────────────────────────────

@@ -17,9 +17,16 @@ import 'screens/primeira_troca_senha.dart';
 import 'screens/dashboard.dart';
 import 'screens/alterar_senha.dart';
 import 'screens/editar_usuario.dart';
+import 'package:api_compartilhado/api_config.dart';
 
-
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await ApiConfig.baseUrlAsync.then((_) {
+    print("✅ API Config carregada com sucesso!");
+  }).catchError((error) {
+    print("❌ Erro ao carregar API Config: $error");
+  }); // ← resolve e faz cache ANTES do app arrancar
+  ApiConfig.printConfig();      // ← confirma no console o IP resolvido
   runApp(const MyApp());
 }
 

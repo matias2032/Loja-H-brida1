@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:api_compartilhado/api_config.dart';
 import 'detalhes_produto.dart';
-import '../controllers/pedido_ativo_controller.dart';
+// import '../controllers/pedido_ativo_controller.dart';
 import '../widgets/pedido_ativo_banner.dart';
 import  '../widgets/app_sidebar.dart';
 import 'package:api_compartilhado/api_compartilhado.dart';
+import 'dart:async';
 
 
 class MenuScreen extends StatefulWidget {
@@ -18,6 +19,7 @@ class _MenuScreenState extends State<MenuScreen> {
   final ProdutoService _produtoService = ProdutoService();
   final MarcaService _marcaService = MarcaService();
   final CategoriaService _categoriaService = CategoriaService();
+  Timer? _timerLive;
 
   List<Produto> _produtos = [];
   List<Produto> _produtosFiltrados = [];
@@ -38,24 +40,56 @@ class _MenuScreenState extends State<MenuScreen> {
   bool _filtrosVisiveis = false;
 final CarrinhoContadorService _carrinhoContador = CarrinhoContadorService.instance;
 
-  @override
-  void initState() {
-    super.initState();
-    _carregarDados();
-    _searchController.addListener(_aplicarFiltros);
-    PedidoAtivoController.instance.carregar(1);
-   // Invalida cache para forçar leitura fresca ao entrar no ecrã
+@override
+void initState() {
+  super.initState();
+  _carregarDados();
+  _searchController.addListener(_aplicarFiltros);
   _carrinhoContador.invalidarCache();
   _carrinhoContador.recarregarSeNecessario();
-  }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    _precoMinController.dispose();
-    _precoMaxController.dispose();
-    super.dispose();
+  // ── Timer para apanhar mudanças de outros utilizadores ────────────
+  _timerLive = Timer.periodic(const Duration(seconds: 30), (_) {
+    if (mounted && !_isLoading) _carregarDadosSilencioso();
+  });
+}
+@override
+void didChangeDependencies() {
+  super.didChangeDependencies();
+  // Força rebuild para reflectir mudanças de sessão (login/logout)
+  setState(() {});
+}
+
+@override
+void dispose() {
+  _timerLive?.cancel();
+  _searchController.dispose();
+  _precoMinController.dispose();
+  _precoMaxController.dispose();
+  super.dispose();
+}
+
+Future<void> _carregarDadosSilencioso() async {
+  try {
+    final produtos = await _produtoService.listarProdutos();
+    final marcas = await _marcaService.listarMarcasComCategorias();
+    final categorias = await _categoriaService.listarCategorias();
+    if (!mounted) return;
+    setState(() {
+      _produtos = produtos
+          .where((p) => p.ativo == 1)
+          .toList()
+        ..sort((a, b) => a.quantidadeEstoque.compareTo(b.quantidadeEstoque));
+      _marcas = marcas;
+      _categorias = categorias;
+    });
+    _aplicarFiltros();
+    _carrinhoContador.invalidarCache();
+    _carrinhoContador.recarregarSeNecessario();
+  } catch (e) {
+    debugPrint('⚠️ [LIVE-WEB] Erro: $e');
   }
+}
 
   Future<void> _carregarDados() async {
     setState(() {
@@ -228,7 +262,10 @@ PreferredSizeWidget _buildAppBar() {
       // ── BOTÃO LOGIN — apenas se NÃO estiver logado ──────────────────
       if (!isLogado)
         TextButton.icon(
-          onPressed: () => Navigator.of(context).pushNamed('/login'),
+          onPressed: () async {
+  await Navigator.of(context).pushNamed('/login');
+  if (mounted) setState(() {}); // ← reactualiza botão login/logout
+},
           icon: const Icon(Icons.login, color: Color(0xFF1A1A2E), size: 18),
           label: const Text(
             'Login',
@@ -255,6 +292,7 @@ PreferredSizeWidget _buildAppBar() {
                   await Navigator.of(context).pushNamed('/carrinho');
                   _carrinhoContador.invalidarCache();
                   await _carrinhoContador.recarregarSeNecessario();
+                    if (mounted) await _carregarDados();
                 },
               ),
               if (contador > 0)
@@ -654,25 +692,22 @@ Widget _buildProdutoCard(Produto produto) {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: semEstoque
-            ? null
-            : () async {
-                final resultado = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => DetalhesProdutoScreen(
-                      produto: produto,
-                      marcas: _marcas,
-                      categorias: _categorias,
-                    ),
-                  ),
-                );
-                if (resultado is Pedido) {
-                  PedidoAtivoController.instance.definir(resultado);
-                  await _carregarDados();
-                } else if (resultado == true) {
-                  await _carregarDados();
-                }
-              },
+    ? null
+    : () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => DetalhesProdutoScreen(
+              produto: produto,
+              marcas: _marcas,
+              categorias: _categorias,
+            ),
+          ),
+        );
+        // Recarrega sempre ao voltar — cobre adição ao carrinho,
+        // checkout e qualquer outra operação feita na tela de detalhes
+        if (mounted) await _carregarDados();
+      },
         child: Opacity(
           opacity: semEstoque ? 0.55 : 1.0,
           child: Column(
@@ -745,54 +780,39 @@ Widget _buildProdutoCard(Produto produto) {
   }
 
 Widget _buildEstoqueBadge(Produto produto) {
-    Color bgColor, borderColor, textColor;
-    String label;
-    IconData icon;
+  final disponivel = produto.quantidadeEstoque > 0;
 
-    if (produto.quantidadeEstoque == 0) {
-      bgColor = Colors.red[50]!;
-      borderColor = Colors.red;
-      textColor = Colors.red[700]!;
-      label = 'Sem estoque';
-      icon = Icons.remove_circle_outline;
-    } else if (produto.quantidadeEstoque <= 5) {
-      bgColor = Colors.orange[50]!;
-      borderColor = Colors.orange;
-      textColor = Colors.orange[700]!;
-      label = 'Restam ${produto.quantidadeEstoque}';
-      icon = Icons.warning_amber_outlined;
-    } else {
-      bgColor = Colors.green[50]!;
-      borderColor = Colors.green;
-      textColor = Colors.green[700]!;
-      label = 'Estq: ${produto.quantidadeEstoque}'; // Abreviação para "Estoque"
-      icon = Icons.check_circle_outline;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), // Padding menor
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderColor, width: 0.5),
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+    decoration: BoxDecoration(
+      color: disponivel ? Colors.green[50]! : Colors.red[50]!,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(
+        color: disponivel ? Colors.green : Colors.red,
+        width: 0.5,
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 10, color: textColor), // Ícone menor
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 9, // Fonte bem pequena para garantir que cabe na largura
-              fontWeight: FontWeight.bold,
-              color: textColor,
-            ),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          disponivel ? Icons.check_circle_outline : Icons.remove_circle_outline,
+          size: 10,
+          color: disponivel ? Colors.green[700]! : Colors.red[700]!,
+        ),
+        const SizedBox(width: 4),
+        Text(
+          disponivel ? 'Disponível' : 'Esgotado',
+          style: TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.bold,
+            color: disponivel ? Colors.green[700]! : Colors.red[700]!,
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 
 Widget _buildProdutoImagem(Produto produto) {
     if (produto.imagemPrincipalUrl == null ||

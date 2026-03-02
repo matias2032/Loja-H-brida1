@@ -1,8 +1,16 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
+import 'package:api_compartilhado/api_config.dart';
 import 'routes.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await ApiConfig.baseUrlAsync.then((_) {
+    print("✅ API Config carregada com sucesso!");
+  }).catchError((error) {
+    print("❌ Erro ao carregar API Config: $error");
+  }); // ← resolve e faz cache ANTES do app arrancar
+  ApiConfig.printConfig();      // ← confirma no console o IP resolvido
   runApp(const MyApp());
 }
 

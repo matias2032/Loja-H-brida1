@@ -6,6 +6,7 @@ import '../widgets/pedido_ativo_banner.dart';
 import  '../widgets/app_sidebar.dart';
 import '../widgets/estoque_alerta_popup.dart';
 import 'package:api_compartilhado/api_compartilhado.dart';
+import 'dart:async';
 
 
 class MenuScreen extends StatefulWidget {
@@ -19,6 +20,8 @@ class _MenuScreenState extends State<MenuScreen> {
   final ProdutoService _produtoService = ProdutoService();
   final MarcaService _marcaService = MarcaService();
   final CategoriaService _categoriaService = CategoriaService();
+    Timer? _timerLive; // ← NOVO
+  static const _intervaloLive = Duration(seconds: 30); // ← ajusta o intervalo
 
   List<Produto> _produtos = [];
   List<Produto> _produtosFiltrados = [];
@@ -39,24 +42,59 @@ class _MenuScreenState extends State<MenuScreen> {
   bool _filtrosVisiveis = false;
 final PedidoContadorService _contadorService = PedidoContadorService.instance;
 
-  @override
-  void initState() {
-    super.initState();
-    _carregarDados();
-    _searchController.addListener(_aplicarFiltros);
-    PedidoAtivoController.instance.carregar(1);
-   // Invalida cache para forçar leitura fresca ao entrar no ecrã
-_contadorService.invalidarCache();
-_contadorService.recarregarSeNecessario();
-  }
+@override
+void initState() {
+  super.initState();
+  _carregarDados();
+  _searchController.addListener(_aplicarFiltros);
+  PedidoAtivoController.instance.carregar(1);
+  _contadorService.invalidarCache();
+  _contadorService.recarregarSeNecessario();
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    _precoMinController.dispose();
-    _precoMaxController.dispose();
-    super.dispose();
+  // ── Live reload ────────────────────────────────────────────────
+  _timerLive = Timer.periodic(_intervaloLive, (_) {
+    if (mounted && !_isLoading) {
+      _carregarDadosSilencioso(); // ← não mostra loading spinner
+    }
+  });
+}
+
+@override
+void dispose() {
+  _timerLive?.cancel(); // ← NOVO
+  _searchController.dispose();
+  _precoMinController.dispose();
+  _precoMaxController.dispose();
+  super.dispose();
+}
+
+Future<void> _carregarDadosSilencioso() async {
+  try {
+    final produtos = await _produtoService.listarProdutos();
+    final marcas = await _marcaService.listarMarcasComCategorias();
+    final categorias = await _categoriaService.listarCategorias();
+
+    if (!mounted) return;
+
+    setState(() {
+      _produtos = produtos
+          .where((p) => p.ativo == 1)
+          .toList()
+        ..sort((a, b) => a.quantidadeEstoque.compareTo(b.quantidadeEstoque));
+      _marcas = marcas;
+      _categorias = categorias;
+    });
+
+    _aplicarFiltros();
+    _contadorService.invalidarCache();
+    _contadorService.recarregarSeNecessario();
+
+    debugPrint('🔄 [LIVE] Dados actualizados silenciosamente');
+  } catch (e) {
+    debugPrint('⚠️ [LIVE] Erro no reload silencioso: $e');
+    // Não mostra erro ao utilizador — é background
   }
+}
 
   Future<void> _carregarDados() async {
     setState(() {

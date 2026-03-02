@@ -10,7 +10,7 @@ start "BACKEND" cmd /k "mvnw spring-boot:run"
 :: Aguardar o Spring Boot iniciar
 timeout /t 15 /nobreak
 
-@REM :: 2. Iniciar o Frontend para Windows
+:: 2. Iniciar o Frontend para Windows
 @REM cd "C:\desenvolvimento hibrido\loja1\frontend\vendedor_app"
 @REM start "FLUTTER WINDOWS" cmd /k "flutter run -d windows"
 
