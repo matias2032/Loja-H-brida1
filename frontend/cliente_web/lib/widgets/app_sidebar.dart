@@ -74,7 +74,7 @@ class _AppSidebarState extends State<AppSidebar>
                 _buildMenuItem(
                   icon: Icons.track_changes,
                   title: 'Acompanhar Pedidos',
-                  route: '/acompanhar_pedidos',
+                  route: '/meus_pedidos',
                 ),
               ],
             ),

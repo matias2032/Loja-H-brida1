@@ -15,6 +15,8 @@ import 'screens/carrinho_screen.dart';
 import 'screens/criar_pedido.dart';
 import 'screens/editar_usuario.dart';
 import 'screens/cadastrar_usuario.dart';
+import 'screens/meus_pedidos_screen.dart';
+import 'screens/historico_pedidos_screen.dart';
 
 
 class RouteGenerator {
@@ -118,6 +120,18 @@ case '/movimentos_estoque':
   return MaterialPageRoute(
     builder: (context) => const MovimentoEstoqueListScreen(),
   );
+
+case '/meus_pedidos':
+  return MaterialPageRoute(
+    builder: (context) => const MeusPedidosScreen(),
+  );
+
+case '/historico_pedidos':
+  return MaterialPageRoute(
+    builder: (context) => const HistoricoPedidosScreen(),
+  );
+
+
 
 
       default:
