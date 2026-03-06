@@ -29,6 +29,11 @@ class _HistoricoPedidosScreenState extends State<HistoricoPedidosScreen>
   void initState() {
     super.initState();
     _carregarPedidos();
+
+      _pedidoService.marcarFinalizadosComoVistos(
+    SessaoService.instance.usuarioAtual!.idUsuario,
+  );
+
   }
 
   Future<void> _carregarPedidos() async {

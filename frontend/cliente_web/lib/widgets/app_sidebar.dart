@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:api_compartilhado/api_compartilhado.dart';
+import '../widgets/badge_contador.dart';
 
 class AppSidebar extends StatefulWidget {
   final String currentRoute;
@@ -18,6 +19,9 @@ class _AppSidebarState extends State<AppSidebar>
   bool _showUserMenu = false;
   late AnimationController _animationController;
   late Animation<double> _rotationAnimation;
+  int _countEmAndamento = 0;
+int _countFinalizados = 0;
+final PedidoService _pedidoService = PedidoService();
 
   @override
   void initState() {
@@ -29,7 +33,10 @@ class _AppSidebarState extends State<AppSidebar>
     _rotationAnimation = Tween<double>(begin: 0, end: 0.5).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
+      _carregarNotificacoes();
   }
+
+
 
   @override
   void dispose() {
@@ -47,6 +54,57 @@ class _AppSidebarState extends State<AppSidebar>
       }
     });
   }
+
+Future<void> _carregarNotificacoes() async {
+  final usuario = SessaoService.instance.usuarioAtual;
+  if (usuario == null) return;
+  try {
+    final notifs = await _pedidoService.contarNotificacoes(usuario.idUsuario);
+    if (mounted) {
+      setState(() {
+        _countEmAndamento = notifs['emAndamento'] ?? 0;
+        _countFinalizados = notifs['finalizadosNaoVistos'] ?? 0;
+      });
+    }
+  } catch (_) {}
+}
+
+Widget _buildMenuItemComBadge({
+  required IconData icon,
+  required String title,
+  required String route,
+  int badgeCount = 0,
+  Color badgeColor = Colors.red,
+}) {
+  final isSelected = widget.currentRoute == route;
+
+  return ListTile(
+    leading: BadgeContador(
+      count: badgeCount,
+      color: badgeColor,
+      child: Icon(
+        icon,
+        color: isSelected ? Colors.deepOrange : Colors.grey[700],
+      ),
+    ),
+    title: Text(
+      title,
+      style: TextStyle(
+        color: isSelected ? Colors.deepOrange : Colors.black87,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      ),
+    ),
+    selected: isSelected,
+    selectedTileColor: Colors.deepOrange.withOpacity(0.1),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    onTap: () {
+      Navigator.pop(context);
+      if (!isSelected) {
+        Navigator.pushReplacementNamed(context, route);
+      }
+    },
+  );
+}
 
   @override
   Widget build(BuildContext context) {
@@ -66,16 +124,20 @@ class _AppSidebarState extends State<AppSidebar>
                   title: 'Menu',
                   route: '/menu',
                 ),
-                _buildMenuItem(
-                  icon: Icons.history,
-                  title: 'Histórico de Pedidos',
-                  route: '/historico_pedidos',
-                ),
-                _buildMenuItem(
-                  icon: Icons.track_changes,
-                  title: 'Acompanhar Pedidos',
-                  route: '/meus_pedidos',
-                ),
+            _buildMenuItemComBadge(
+  icon: Icons.history,
+  title: 'Histórico de Pedidos',
+  route: '/historico_pedidos',
+  badgeCount: _countFinalizados,     // some ao entrar
+  badgeColor: Colors.green,
+), 
+              _buildMenuItemComBadge(
+  icon: Icons.track_changes,
+  title: 'Acompanhar Pedidos',
+  route: '/meus_pedidos',
+  badgeCount: _countEmAndamento,     // persiste até finalizar
+  badgeColor: Colors.orange,
+),
               ],
             ),
           ),

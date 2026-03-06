@@ -65,5 +65,19 @@ List<Pedido> findByIdUsuarioAndStatusPedidoOrderByDataPedidoDesc(Integer idUsuar
 
 List<Pedido> findByIdUsuarioAndStatusPedidoAndIdTipoOrigemPedidoOrderByDataPedidoDesc(
     Integer idUsuario, String statusPedido, Integer idTipoOrigemPedido);
+
+// Conta pedidos do utilizador com status diferente de "finalizado"
+@Query("SELECT COUNT(p) FROM Pedido p WHERE p.idUsuario = :idUsuario AND p.statusPedido <> 'finalizado'")
+long countPedidosAtivosDoUsuario(@Param("idUsuario") Integer idUsuario);
+
+// Conta pedidos finalizados ainda não vistos
+@Query("SELECT COUNT(p) FROM Pedido p WHERE p.idUsuario = :idUsuario AND p.statusPedido = 'finalizado' AND p.notificacaoVista = 0")
+long countFinalizadosNaoVistos(@Param("idUsuario") Integer idUsuario);
+
+// Marca todos os pedidos finalizados como vistos
+@Modifying
+@Query("UPDATE Pedido p SET p.notificacaoVista = 1 WHERE p.idUsuario = :idUsuario AND p.statusPedido = 'finalizado' AND p.notificacaoVista = 0")
+int marcarFinalizadosComoVistos(@Param("idUsuario") Integer idUsuario);
+
 }
 

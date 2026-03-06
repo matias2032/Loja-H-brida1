@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.Optional;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -703,5 +704,20 @@ public List<PedidoResponseDTO> listarPorUsuarioStatusEOrigem(
             .collect(Collectors.toList());
 }
 
+@Transactional(readOnly = true)
+public Map<String, Long> contarNotificacoes(Integer idUsuario) {
+    long emAndamento = pedidoRepository.countPedidosAtivosDoUsuario(idUsuario);
+    long finalizados = pedidoRepository.countFinalizadosNaoVistos(idUsuario);
+    return Map.of(
+        "emAndamento", emAndamento,
+        "finalizadosNaoVistos", finalizados
+    );
+}
+
+@Transactional
+public void marcarFinalizadosComoVistos(Integer idUsuario) {
+    pedidoRepository.marcarFinalizadosComoVistos(idUsuario);
+    log.info("Pedidos finalizados do utilizador {} marcados como vistos", idUsuario);
+}
 
 }

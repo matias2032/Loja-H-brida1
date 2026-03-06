@@ -488,4 +488,34 @@ Future<void> desativarPedido(int idPedido) async {
     rethrow;
   }
 }
+// Retorna { "emAndamento": n, "finalizadosNaoVistos": n }
+Future<Map<String, int>> contarNotificacoes(int idUsuario) async {
+  final response = await http
+      .get(
+        Uri.parse('${ApiConfig.pedidosUrl}/usuario/$idUsuario/notificacoes'),
+        headers: ApiConfig.defaultHeaders,
+      )
+      .timeout(ApiConfig.timeout);
+
+  if (response.statusCode == 200) {
+    final data = json.decode(utf8.decode(response.bodyBytes));
+    return {
+      'emAndamento': (data['emAndamento'] as num).toInt(),
+      'finalizadosNaoVistos': (data['finalizadosNaoVistos'] as num).toInt(),
+    };
+  }
+  throw Exception('Erro ao contar notificações: ${response.statusCode}');
+}
+
+// Chame este método ao entrar na tela de pedidos finalizados
+Future<void> marcarFinalizadosComoVistos(int idUsuario) async {
+  await http
+      .patch(
+        Uri.parse(
+          '${ApiConfig.pedidosUrl}/usuario/$idUsuario/marcar-finalizados-vistos'),
+        headers: ApiConfig.defaultHeaders,
+      )
+      .timeout(ApiConfig.timeout);
+}
+
 }

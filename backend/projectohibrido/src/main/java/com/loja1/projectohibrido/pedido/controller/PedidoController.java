@@ -8,7 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import java.util.Map;
 import java.util.List;
 
 @RestController
@@ -190,4 +190,20 @@ public ResponseEntity<List<PedidoResponseDTO>> listarPorUsuarioStatusEOrigem(
     return ResponseEntity.ok(
         pedidoService.listarPorUsuarioStatusEOrigem(idUsuario, status, origem));
 }
+
+// GET /api/pedidos/usuario/{idUsuario}/notificacoes
+@GetMapping("/usuario/{idUsuario}/notificacoes")
+public ResponseEntity<Map<String, Long>> contarNotificacoes(
+        @PathVariable Integer idUsuario) {
+    return ResponseEntity.ok(pedidoService.contarNotificacoes(idUsuario));
+}
+
+// PATCH /api/pedidos/usuario/{idUsuario}/marcar-finalizados-vistos
+@PatchMapping("/usuario/{idUsuario}/marcar-finalizados-vistos")
+public ResponseEntity<Void> marcarFinalizadosComoVistos(
+        @PathVariable Integer idUsuario) {
+    pedidoService.marcarFinalizadosComoVistos(idUsuario);
+    return ResponseEntity.noContent().build();
+}
+
 }
